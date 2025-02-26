@@ -1,0 +1,1990 @@
+---
+title: "ADHD rx and suicide multinational"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+    code_folding: hide
+    df_print: paged
+    
+  pdf_document: default
+---
+
+1. Main analysis
+
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(readxl)
+risk<-read_excel("D:/enter/4_bouken/2024_4 ADHD Suicide/R/risk_results.xlsx")
+library(meta)
+
+risk_main<-subset(risk, Analysis=="main" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=risk_main$Case_inc,
+                 event.c=risk_main$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+```
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(readxl)
+rp<-read_excel("D:/enter/4_bouken/2024_4 ADHD Suicide/R/riskperiod_results.xlsx")
+
+
+library(meta)
+rp$IRR<-as.numeric(rp$IRR)
+rp$IRRLCI<-as.numeric(rp$IRRLCI)
+rp$IRRUCI<-as.numeric(rp$IRRUCI)
+rp$Case_inc<-as.numeric(rp$Case_inc)
+rp$Control_inc<-as.numeric(rp$Control_inc)
+rp$Case_total<-as.numeric(rp$Case_total)
+rp$Control_total<-as.numeric(rp$Control_total)
+
+
+rp_main_pre90<-subset(rp, Analysis=="Main" & `Risk Window`=="90 days before ADHD medication initiation")
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",byvar = `Risk Window`,
+                 title = "Main analysis", subgroup =  `Risk Window`)
+library(forestplot)
+library(dplyr)
+
+
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+          leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(readxl)
+rp<-read_excel("D:/enter/4_bouken/2024_4 ADHD Suicide/R/riskperiod_results.xlsx")
+
+#Spittal, M.J., Pirkis, J. & Gurrin, L.C. Meta-analysis of incidence rate data in the presence of zero events. BMC Med Res Methodol 15, 42 (2015). https://doi.org/10.1186/s12874-015-0031-0
+
+library(meta)
+rp$IRR<-as.numeric(rp$IRR)
+rp$IRRLCI<-as.numeric(rp$IRRLCI)
+rp$IRRUCI<-as.numeric(rp$IRRUCI)
+rp$Case_inc<-as.numeric(rp$Case_inc)
+rp$Control_inc<-as.numeric(rp$Control_inc)
+rp$Case_total<-as.numeric(rp$Case_total)
+rp$Control_total<-as.numeric(rp$Control_total)
+
+
+rp_main_pre90<-subset(rp, Analysis=="Main" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 leftcols=c("studlab", "event.e", "n.e", "event.c", "n.c"),
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis", subgroup =  `Risk Window`)
+
+
+library(forestplot)
+library(dplyr)
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+                leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Main" & `Risk Window`=="Subsequent ADHD medication use")
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+   #              subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis", subgroup =  `Risk Window`)
+library(forestplot)
+library(dplyr)
+
+
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
+
+2. Subgroup: Stimulants
+
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+risk_main<-subset(risk, Analysis=="stim" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+```
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Stimulants" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+rp_main_pre90<-subset(rp, Analysis=="Stimulants" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Stimulants" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+```
+
+3. Subgroup: Non-stimulants
+
+
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+risk_main<-subset(risk, Analysis=="nons" )
+
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=risk_main$Case_inc,
+                 event.c=risk_main$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+```{r fig.height=4, fig.width=9, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Non-stimulants" & `Risk Window`=="90 days before ADHD medication initiation" )
+
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,8),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=9, message=FALSE, warning=FALSE}
+library(meta)
+
+
+rp_main_pre90<-subset(rp, Analysis=="Non-stimulants" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,8),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=9, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Non-stimulants" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,8),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+```
+
+
+4. Subgroup: male
+
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+risk_main<-subset(risk, Analysis=="subm" )
+
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=risk_main$Case_inc,
+                 event.c=risk_main$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+```
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Sub_male" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+rp_main_pre90<-subset(rp, Analysis=="Sub_male" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Sub_male" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+```
+
+5. Subgroup: female
+
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+risk_main<-subset(risk, Analysis=="subf" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+```
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Sub_female" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+rp_main_pre90<-subset(rp, Analysis=="Sub_female" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="Sub_female" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+```
+6. Sensitivity 1: Recurrent suicide
+
+
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+risk_main<-subset(risk, Analysis=="sen1" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_1" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+rp_main_pre90<-subset(rp, Analysis=="SA_1" & `Risk Window`=="First 90 days of ADHD medication use")
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_1" & `Risk Window`=="Subsequent ADHD medication use" & IRR!=0)
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+```
+
+3. Sensitivity 2: Remove people with death
+
+
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+risk_main<-subset(risk, Analysis=="sen2" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_2" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+rp_main_pre90<-subset(rp, Analysis=="SA_2" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_2" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
+
+3. Sensitivity 3: Extend exposure duration by 1 week:
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+risk_main<-subset(risk, Analysis=="sen3" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_3" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+
+rp_main_pre90<-subset(rp, Analysis=="SA_3" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+
+
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_3" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
+
+Sensitivity 4: Extend exposure duration by 5 weeks:
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+risk_main<-subset(risk, Analysis=="sen4" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_4" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+rp_main_pre90<-subset(rp, Analysis=="SA_4" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_4" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
+Sensitivity 5: Extend exposure duration by 10 weeks:
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+risk_main<-subset(risk, Analysis=="sen5" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_5" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+rp_main_pre90<-subset(rp, Analysis=="SA_5" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_5" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
+
+Sensitivity 6: Only inlcude people wtih ADHD dx
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+risk_main<-subset(risk, Analysis=="sen6" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_6" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+rp_main_pre90<-subset(rp, Analysis=="SA_6" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_6" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
+
+Sensitivity 7: Removing people with ADHD Rx 12 months before observation start
+```{r fig.height=3, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+risk_main<-subset(risk, Analysis=="sen7" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRR_Lower),
+                 upper=log(IRR_Upper),
+                 studlab = Country,
+                 data = risk_main,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 method.tau = "DL",
+                 title = "Main analysis")
+
+main<-forest(m.gen,    
+       col.square="cornflowerblue",
+                 title = "Overall",
+        ff.heading = "bold",
+col.i.inside.square="black",
+#col.study = "red",
+       col.study = "black",col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="navy",
+       lab.e=NULL, lab.c=NULL,
+label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ))
+
+
+```
+
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_6" & `Risk Window`=="90 days before ADHD medication initiation" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+library(meta)
+rp_main_pre90<-subset(rp, Analysis=="SA_6" & `Risk Window`=="First 90 days of ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL",
+                 title = "Main analysis")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+```
+
+```{r fig.height=4, fig.width=8.7, message=FALSE, warning=FALSE}
+
+library(meta)
+
+rp_main_pre90<-subset(rp, Analysis=="SA_6" & `Risk Window`=="Subsequent ADHD medication use" )
+m.gen <- metagen(TE = log(IRR),
+                 lower=log(IRRLCI),
+                 upper=log(IRRUCI),
+                 studlab = Country,
+                 data = rp_main_pre90,
+                 event.e=rp_main_pre90$Case_inc,
+                 event.c=rp_main_pre90$Control_inc,
+                 n.e=Case_total,
+                 n.c=Control_total,
+                 sm = "IRR",
+                 fixed = FALSE,
+                 random = TRUE,
+                 subgroup=`Risk Window`,
+                 method.tau = "DL")
+library(forestplot)
+library(dplyr)
+main_pre90<-forest(m.gen,    
+       col.square="cornflowerblue",
+        ff.heading = "bold",
+col.i.inside.square="black",
+       col.diamond.random = "darkblue",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       xlim = c(0.2,5),
+       col.by="black",
+       lab.e=NULL, lab.c=NULL, label=T,
+         leftcols = c("studlab", "n.e", "n.c"),
+       leftlabs=c("Country","Exposed \n person-years","Unexposed \n person-years" ),
+       rightlabs=c("(IRR)","95% CI","Weight" ),
+overall.hetstat=F,  test.subgroup=F)
+
+
+```
