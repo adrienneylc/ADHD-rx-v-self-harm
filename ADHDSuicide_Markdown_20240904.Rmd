@@ -1,0 +1,2642 @@
+
+# Connect to rmarkdown and github
+install.packages("rmarkdown")
+rmarkdown::render 
+
+---
+title: "ADHD medication use and risk of suicide attempt: a multinationa study"
+output:
+
+#  html_document:
+github_document:
+    html_preview: false
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: true
+    fig_width: 7
+    fig_height: 6
+    dev: jpeg
+    fig_caption: true
+    code_folding: hide
+ #   df_print: paged
+ # pdf_document: default
+---
+
+```{css toc-content, echo = FALSE}
+#TOC {
+  left: 20px;
+  margin: 20px 0px 25px 0px;
+}
+
+div.main-container {
+    margin-left: 20px;
+}
+```
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 100)
+```
+
+
+# Analysis Plan  
+1. Global, regional, and national rates and time trends of prevalent use, incident use, non-incident use  
+2. Sex differences in prevalent use
+3. Age differences in prevalent use
+4. Correlation between time trends and cancer prev and OUD prev
+
+# Load packages  
+Packages used:  
+1. data manipulation: dplyr, tidyr, stringr, stringi, data.table, Hmisc, haven  
+2. data visualisation: ggplot2, grid, forestplot, directlabels, RColorBrewer  
+3. statistical analyses: epitools, ratesci, metafor, meta, splines, Rcan, insight ()  
+
+# Read RDS  
+Path of RDS for analyses: D:/R/GOMAP/GOMAP POA/cleaned  
+```{r}
+data.all<-readRDS(file = "D:/R/GOMAP/GOMAP POA/cleaned/POA_all.RDS") 
+data.MF<-readRDS(file = "D:/R/GOMAP/GOMAP POA/cleaned/POA_sex.RDS") 
+prev.age.M<-readRDS(file = "D:/R/GOMAP/GOMAP POA/cleaned/POA_age_M_prev.RDS") 
+prev.age.F<-readRDS(file = "D:/R/GOMAP/GOMAP POA/cleaned/POA_age_F_prev.RDS")
+gbd<-readRDS(file = "D:/R/GOMAP/GOMAP POA/cleaned/gbd.RDS") 
+gbd_cancer<-readRDS(file = "D:/R/GOMAP/GOMAP POA/cleaned/gbd_cancer.RDS") 
+```
+
+# National prev (all users), inci (new users), recr (consecutive users)    
+## Calculate national rates: Both sexes  
+```{r message=FALSE, warning=FALSE}
+library(DT)
+data.all$`Prevalent users`<-as.numeric(data.all$`Prevalent users`)
+data.all$`Incident users`<-as.numeric(data.all$`Incident users`)
+data.all[data.all == 0] <- NaN
+data.all$`Non-incident users`<-(data.all$`Prevalent users`-data.all$`Incident users`)
+data.all$prev<-data.all$`Prevalent users`/data.all$Population*100
+data.all$inci<-data.all$`Incident users`/data.all$Population*100
+data.all$recr<-data.all$`Non-incident users`/data.all$Population*100
+
+write.csv(data.all,"D:/R/GOMAP/GOMAP POA/POAall.csv")
+```
+
+## Estimate confidence interval of Poisson rates using epitools package    
+```{r message=FALSE, warning=FALSE}
+library(epitools)
+data.all.2<-data.all
+all.prev<-pois.approx(data.all.2$`Prevalent users`, pt = data.all.2$Population/100, conf.level = 0.95)
+data.all.2$prevCIlower<-all.prev$lower
+data.all.2$prevCIupper<-all.prev$upper
+
+all.inci<-pois.approx(data.all.2$`Incident users`, pt = data.all.2$Population/100, conf.level = 0.95)
+data.all.2$inciCIlower<-all.inci$lower
+data.all.2$inciCIupper<-all.inci$upper
+
+all.recr<-pois.approx(data.all.2$`Non-incident users`, pt = data.all.2$Population/100, conf.level = 0.95)
+data.all.2$recrCIlower<-all.recr$lower
+data.all.2$recrCIupper<-all.recr$upper
+```
+
+## Calculate absolute and relative change per year  
+Path of Appendix 5 information: D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Appendix1_national rates.csv
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+data.all.3<-data.all.2
+data.all.4<-data.all.3 %>%
+  group_by(Country) %>%
+  arrange(Year, .by_group = TRUE)  %>%
+  mutate(PrevAbsDiff = prev - lag(prev, default = first(prev)))
+data.all.4<-data.all.4 %>%
+  group_by(Country) %>%
+  arrange(Year, .by_group = TRUE) %>%
+  mutate(PrevRelDiff = (prev - lag(prev, default = first(prev)))/lag(prev, default = first(prev))*100)
+data.all.4<-data.all.4 %>%
+  group_by(Country) %>%
+  arrange(Year, .by_group = TRUE) %>%
+  mutate(InciAbsDiff = inci - lag(inci, default = first(inci)))
+data.all.4<-data.all.4 %>%
+  group_by(Country) %>%
+  arrange(Year, .by_group = TRUE) %>%
+  mutate(InciRelDiff = (inci - lag(inci, default = first(inci)))/lag(inci, default = first(inci))*100)
+data.all.4<-data.all.4 %>%
+  group_by(Country) %>%
+  arrange(Year, .by_group = TRUE) %>%
+  mutate(RecrAbsDiff = recr - lag(recr, default = first(recr)))
+data.all.4<-data.all.4 %>%
+  group_by(Country) %>%
+  arrange(Year, .by_group = TRUE) %>%
+  mutate(RecrRelDiff = (recr - lag(recr, default = first(recr)))/lag(recr, default = first(recr))*100)
+data.all.4$Year<-as.numeric(data.all.4$Year)
+
+datatable(data.all.4, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '150px', targets = c(1, 3)))
+))
+write.csv(data.all.4, "D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Appendix1_national rates.csv")
+```
+
+
+# Trend analyses by country (all, incident, non-incident)  
+## Relative rate reduction confidence interval 
+CI of relative change were derived from CI spreadsheet. A suggested citation for the confidence interval calculator is:  
+Herbert R. Confidence Interval Calculator (2013). https://pedro.org.au/english/resources/confidence-interval-calculator/. Accessed on [date].  
+package("epitools")::epitab, risk ratio is used in the updated analysis  
+
+### Relative annual change of all opioid use prevalence (all sex, age)
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(epitools)
+library(dplyr)
+try<-data.all.4
+try$unexposed<-try$Population-try$`Prevalent users`
+try <- try[,c(28,7)]
+
+for(i in 1:c(nrow(try)-1)){
+  print(i)
+  j <- i+1
+  temp_try <- try[c(i,j),]
+  temp_res <- epitab(as.matrix(temp_try),method="riskratio")$tab[2,5:7]
+  if(i==1){
+    out_res <- temp_res
+  }else{
+    out_res <- rbind(out_res,temp_res)
+  }
+}
+
+out_res<-as.data.frame(out_res)
+prevRR<-out_res
+tmp<-c(0,0,0)
+prevRR<-rbind(tmp,prevRR)
+prevRR$RR<-(prevRR$riskratio-1)*100
+prevRR$RRLCI<-(prevRR$lower-1)*100
+prevRR$RRUCI<-(prevRR$upper-1)*100
+
+prevRR_tmp<- data.all.4[c(1,2,7,9,13,23)]
+prevRR<-cbind(prevRR_tmp,prevRR[4:6])
+
+prevRR$riskratio<-round(prevRR$RR,4)
+prevRR$RRLCL<-round(prevRR$RRLCI,4)
+prevRR$RRUCL<-round(prevRR$RRUCI,4)
+
+datatable(prevRR, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '100px', targets = c(1, 3)))
+))
+```
+### Relative annual change of all opioid incident use  (all sex, age)
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(epitools)
+library(dplyr)
+
+try<-data.all.4
+try$unexposed<-try$Population-try$`Incident users`
+try <- try[,c(28,8)]
+try[is.na(try)]<-0
+
+for(i in 1:c(nrow(try)-1)){
+  print(i)
+  j <- i+1
+  temp_try <- try[c(i,j),]
+  temp_res <- epitab(as.matrix(temp_try),method="riskratio")$tab[2,5:7]
+  if(i==1){
+    out_res <- temp_res
+  }else{
+    out_res <- rbind(out_res,temp_res)
+  }
+}
+
+out_res<-as.data.frame(out_res)
+inciRR<-out_res
+tmp<-c(0,0,0)
+inciRR<-rbind(tmp,inciRR)
+inciRR$RR<-(inciRR$riskratio-1)*100
+inciRR$RRLCI<-(inciRR$lower-1)*100
+inciRR$RRUCI<-(inciRR$upper-1)*100
+
+inciRR_tmp<- data.all.4[c(1,2,8,9,14,25)]
+inciRR<-cbind(inciRR_tmp,inciRR[4:6])
+
+inciRR$riskratio<-round(inciRR$RR,4)
+inciRR$RRLCL<-round(inciRR$RRLCI,4)
+inciRR$RRUCL<-round(inciRR$RRUCI,4)
+
+datatable(inciRR, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '100px', targets = c(1, 3)))
+))
+```
+### Relative annual change of all opioid non-incident use  (all sex, age)
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(epitools)
+library(dplyr)
+
+try<-data.all.4
+try$unexposed<-try$Population-try$`Non-incident users`
+try <- try[,c(28,12)]
+try[is.na(try)]<-0
+
+for(i in 1:c(nrow(try)-1)){
+  print(i)
+  j <- i+1
+  temp_try <- try[c(i,j),]
+  temp_res <- epitab(as.matrix(temp_try),method="riskratio")$tab[2,5:7]
+  if(i==1){
+    out_res <- temp_res
+  }else{
+    out_res <- rbind(out_res,temp_res)
+  }
+}
+
+out_res<-as.data.frame(out_res)
+recrRR<-out_res
+tmp<-c(0,0,0)
+recrRR<-rbind(tmp,recrRR)
+recrRR$RR<-(recrRR$riskratio-1)*100
+recrRR$RRLCI<-(recrRR$lower-1)*100
+recrRR$RRUCI<-(recrRR$upper-1)*100
+
+recrRR_tmp<- data.all.4[c(1,2,12,9,15,27)]
+recrRR<-cbind(recrRR_tmp,recrRR[4:6])
+
+recrRR$riskratio<-round(recrRR$RR,4)
+recrRR$RRLCL<-round(recrRR$RRLCI,4)
+recrRR$RRUCL<-round(recrRR$RRUCI,4)
+
+datatable(recrRR, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '100px', targets = c(1, 3)))
+))
+```
+## Trend test for prev  
+Path of results: D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Table_2_trend_test.csv
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(plyr)
+library(tibble)
+
+models <- dlply(data.all.4, "Country", function(df) 
+  lm(prev ~ Year, data = df))
+
+coef<-sapply(models, function(df) summary(df)$coefficients[2])
+lm.results<-data.frame(coef)
+
+ad_extract_ci <- function(x){
+  temp_lw <- confint.lm(x)[2,1]
+  temp_up <- confint.lm(x)[2,2]
+  return(c(temp_lw,temp_up))
+}
+
+lower<-unlist(lapply(lapply(models,ad_extract_ci),"[",1))
+lm.results<-cbind(lm.results, lower)
+upper<-unlist(lapply(lapply(models,ad_extract_ci),"[",2))
+lm.results<-cbind(lm.results, upper)
+pvalue<-sapply(models, function(df) summary(df)$coefficients[8])
+lm.results<-cbind(lm.results, pvalue)
+lm.results<-rownames_to_column(lm.results)
+colnames(lm.results)[which(names(lm.results) == "rowname")] <- "Country"
+datatable(lm.results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+write.csv(lm.results, "D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Table_2_trend_test.csv")
+```
+## Test code validity
+```{r message=FALSE, warning=FALSE}
+data.all.HK<-subset(data.all.4,Country=="Hong Kong")
+summary(m1 <- glm(prev ~ Year, 
+                  data=subset(data.all.HK)))
+confint(m1)
+```
+## Trend test for inci  
+Path of results: D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Table_2_trend_test_inci.csv
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(plyr)
+library(tibble)
+# Break up d by state, then fit the specified model to each piece and
+# return a list
+models_inci <- dlply(data.all.4, "Country", function(df) 
+  lm(inci ~ Year, data = df))
+
+coef<-sapply(models_inci, function(df) summary(df)$coefficients[2])
+lm.results<-data.frame(coef)
+
+ad_extract_ci <- function(x){
+  temp_lw <- confint.lm(x)[2,1]
+  temp_up <- confint.lm(x)[2,2]
+  return(c(temp_lw,temp_up))
+}
+
+lower<-unlist(lapply(lapply(models_inci,ad_extract_ci),"[",1))
+lm.results<-cbind(lm.results, lower)
+upper<-unlist(lapply(lapply(models_inci,ad_extract_ci),"[",2))
+lm.results<-cbind(lm.results, upper)
+pvalue<-sapply(models_inci, function(df) summary(df)$coefficients[8])
+lm.results<-cbind(lm.results, pvalue)
+lm.results<-rownames_to_column(lm.results)
+colnames(lm.results)[which(names(lm.results) == "rowname")] <- "Country"
+datatable(lm.results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+write.csv(lm.results, "D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Table_2_trend_test_inci.csv")
+```
+## Trend test for non-inci  
+Path of results: D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Table_2_trend_test_recr.csv"
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+library(plyr)
+library(tibble)
+# Break up d by state, then fit the specified model to each piece and
+# return a list
+models_recr <- dlply(data.all.4, "Country", function(df) 
+  lm(recr ~ Year, data = df))
+
+coef<-sapply(models_recr, function(df) summary(df)$coefficients[2])
+lm.results<-data.frame(coef)
+
+ad_extract_ci <- function(x){
+  temp_lw <- confint.lm(x)[2,1]
+  temp_up <- confint.lm(x)[2,2]
+  return(c(temp_lw,temp_up))
+}
+
+lower<-unlist(lapply(lapply(models_recr,ad_extract_ci),"[",1))
+lm.results<-cbind(lm.results, lower)
+upper<-unlist(lapply(lapply(models_recr,ad_extract_ci),"[",2))
+lm.results<-cbind(lm.results, upper)
+pvalue<-sapply(models_recr, function(df) summary(df)$coefficients[8])
+lm.results<-cbind(lm.results, pvalue)
+lm.results<-rownames_to_column(lm.results)
+colnames(lm.results)[which(names(lm.results) == "rowname")] <- "Country"
+datatable(lm.results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+write.csv(lm.results, "D:/R/GOMAP/GOMAP POA/Updated_analysis/Tables/Table_2_trend_test_recr.csv")
+```
+
+## Plot prevalent users 
+```{r fig.height=9, fig.width=12,message=FALSE, warning=FALSE}
+library(directlabels)
+library(ggplot2)
+
+col<-c("#000080", "#00fa9a","#8b0000", "#ff8c00", "#5D3FD3", 
+       "#ff0000" ,"#93C572","#0000ff", "#ba55d3", 
+       "#ff00ff","#00BCD4", 
+       "#F48FB1", "#2e8b57", 
+      "#1e90ff","#b03060", "#FFDB58", "#2f4f4f", 
+      "#ff1493", "#ffa07a", "#87cefa")
+
+data.all.4$Country<-factor(data.all.4$Country, levels=c(
+                           "Denmark", "Finland","Iceland","Norway","Sweden",
+                           "France","Germany", "Netherlands", "United Kingdom",
+                           "Italy","Spain",
+                           "Australia","New Zealand",
+                           "Hong Kong", "Japan","South Korea","Taiwan",
+                           "Canada","US (publicly insured)","US (privately insured)"))
+data.all.4$Region<-factor(data.all.4$Region, levels=c("Northern Europe",
+                                                      "Western Europe",
+                                                      "Southern Europe",
+                                                      "Oceania",
+                                                      "Asia",
+                                                      "North America"))
+
+a<-ggplot(data.all.4, aes(x=Year, y=prev, group=Country)) +
+   geom_line(aes(color=Country), size=0.8)+
+  geom_point(aes(color=Country))+
+  theme_bw()+ 
+  # geom_ribbon(data=data.all.4,
+  #             aes(ymin = prevCIlower, ymax = prevCIupper), alpha = 0.5)+
+  theme(legend.position="top", 
+        legend.justification='left',
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        legend.spacing.y=unit(c(0.1),"cm"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90, vjust=0.5),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100 individuals)", colour="Country")+
+  scale_x_continuous(breaks=seq(2001,2019,1), expand = c(0, 0), limits = c(2000,2025))+ 
+  scale_y_continuous(breaks=seq(0,24,1), expand = c(0, 0),limits = c(0,25))+ 
+  scale_color_manual(values = col)+
+  facet_wrap(~Region, nrow = 2)+
+  guides(colour=guide_legend(nrow=2,byrow=TRUE))+
+  ggtitle("Opioid Analgesic All users 2001 - 2019, Both sexes")+    
+  geom_dl(aes(label = Label, col=Country), 
+          method=list(cex = 0.8,dl.trans(x = x),
+                        "last.bumpup", 
+                        hjust = -0.3, vjust = 0.5))
+
+a
+ggsave(filename="Figure1_country_trend_all.png", plot=a, height =9, width=12,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+
+a<-ggplot(data.all.4, aes(x=Year, y=prev, group=Country)) +
+   geom_line(aes(color=Country), size=0.8)+
+  geom_point(aes(color=Country))+
+  theme_classic()+ 
+  # geom_ribbon(data=data.all.4,
+  #             aes(ymin = prevCIlower, ymax = prevCIupper), alpha = 0.5)+
+  theme(legend.position="top", 
+        legend.justification='left',
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        legend.spacing.y=unit(c(0.1),"cm"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90, vjust=0.5),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100 individuals)", colour="Country")+
+  scale_x_continuous(breaks=seq(2001,2019,1), expand = c(0, 0), limits = c(2000,2022))+ 
+  scale_y_continuous(breaks=seq(0,24,1), expand = c(0, 0),limits = c(0,25))+ 
+  scale_color_manual(values = col)+
+  guides(colour=guide_legend(nrow=2,byrow=TRUE))+
+  ggtitle("Opioid Analgesic All users 2001 - 2019, Both sexes")+    
+  geom_dl(aes(label = Country, col=Country), 
+          method=list(cex = 0.8,dl.trans(x = x),
+                        "last.bumpup", 
+                        hjust = -0.2, vjust = 0.5))
+
+a
+ggsave(filename="Figure1b_country_trend_all.png", plot=a, height =7, width=9,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+## Plot Incident vs Non-incident users
+```{r fig.height=14, fig.width=9, warning=FALSE}
+library(directlabels)
+library(ggplot2)
+library(tidyr)
+
+data.all.5<-data.all.4[c(1:6, 10:15)]
+data.all.5<-data.all.5 %>% 
+pivot_longer(c(10:12),
+              names_to = "Parameter", values_to = "Rate")
+
+data.all.5$Parameter[data.all.5$Parameter == "inci"] <- "Incident use"
+data.all.5$Parameter[data.all.5$Parameter == "prev"] <- "All use"
+data.all.5$Parameter[data.all.5$Parameter == "recr"] <- "Non-incident use"
+
+incivsnoninci<-subset(data.all.5, Parameter!="All use")
+incivsnonincia<-subset(incivsnoninci, Region=="Northern Europe"|
+                         Region=="Western Europe"|
+                         Region=="Southern Europe")
+incivsnonincib<-subset(incivsnoninci, Region=="Asia"|
+                         Region=="Oceania"|
+                         Region=="North America")
+a<-ggplot(incivsnonincia, aes(x=Year, y=Rate, group=Country)) +
+   geom_line(aes(color=Country), size=0.8)+
+  geom_point(aes(color=Country))+
+  theme_bw()+ 
+  # geom_ribbon(data=data.all.4,
+  #             aes(ymin = prevCIlower, ymax = prevCIupper), alpha = 0.5)+
+  theme(legend.position="none",
+        # legend.spacing.y=unit(c(0.2),"cm"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90, vjust=0.5),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Opioid users (per 100 population)", colour="Country")+
+  scale_x_continuous(breaks=seq(2001,2019,1), expand = c(0, 0), limits = c(2000,2026))+ 
+  scale_y_continuous(breaks=seq(0,16,1), expand = c(0, 0),limits = c(0,17))+ 
+  scale_color_manual(values = col)+ 
+  facet_grid(vars(Region), vars(Parameter))+
+  # guides(colour=guide_legend(nrow=2,byrow=TRUE))+
+  ggtitle("Opioid Analgesic users 2001 - 2019, Both sexes")+    
+  geom_dl(aes(label = Label, col=Country), 
+          method=list(cex = 0.8,dl.trans(x = x),
+                        "last.bumpup", 
+                        hjust = -0.2, vjust = -0.2))
+
+a
+
+ggsave(filename="Figure_2_Inci_vs_Nonincia.png", plot=a, height =10, width=7,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+
+a<-ggplot(incivsnonincib, aes(x=Year, y=Rate, group=Country)) +
+   geom_line(aes(color=Country), size=0.8)+
+  geom_point(aes(color=Country))+
+  theme_bw()+ 
+  # geom_ribbon(data=data.all.4,
+  #             aes(ymin = prevCIlower, ymax = prevCIupper), alpha = 0.5)+
+  theme(legend.position="none",
+        # legend.spacing.y=unit(c(0.2),"cm"),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90, vjust=0.5),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Opioid users (per 100 population)", colour="Country")+
+  scale_x_continuous(breaks=seq(2001,2019,1), expand = c(0, 0), limits = c(2000,2026))+ 
+  scale_y_continuous(breaks=seq(0,16,1), expand = c(0, 0),limits = c(0,17))+ 
+  scale_color_manual(values = col)+ 
+  facet_grid(vars(Region), vars(Parameter))+
+  # guides(colour=guide_legend(nrow=2,byrow=TRUE))+
+  ggtitle("Opioid Analgesic users 2001 - 2019, Both sexes")+    
+  geom_dl(aes(label = Label, col=Country), 
+          method=list(cex = 0.8,dl.trans(x = x),
+                        "last.bumpup", 
+                        hjust = -0.2, vjust = -0.2))
+
+a
+
+ggsave(filename="Figure_2_Inci_vs_Nonincib.png", plot=a, height =10, width=7,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+
+# Meta analysis: Pooled prevalence 2015 (all sites)  
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+library(meta)
+library(forestplot)
+
+pooled<-data.all.4[data.all.4$Year==2015,]
+pooled$Prevalence<-pooled$prev
+
+pooled$Prevalence<-as.numeric(format(round(pooled$Prevalence, 2), nsmall = 2))
+pooled$prevLCL<-as.numeric(format(round(pooled$prevCIlower, 2), nsmall = 2))
+pooled$prevUCL<-as.numeric(format(round(pooled$prevCIupper, 2), nsmall = 2))
+pooled$Region<-"."
+pooled$Region[pooled$Country == "Australia"] <- "Oceania"
+pooled$Region[pooled$Country == "New Zealand"] <- "Oceania"
+
+pooled$Region[pooled$Country == "Denmark"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Finland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Iceland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Norway"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Sweden"] <- "Northern Europe"
+
+pooled$Region[pooled$Country == "US (publicly insured)"] <- "North America"
+pooled$Region[pooled$Country == "US (privately insured)"] <- "North America"
+pooled$Region[pooled$Country == "Canada"] <- "North America"
+
+pooled$Region[pooled$Country == "France"] <- "Western Europe"
+pooled$Region[pooled$Country == "Germany"] <- "Western Europe"
+pooled$Region[pooled$Country == "United Kingdom"] <- "Western Europe"
+pooled$Region[pooled$Country == "Netherlands"] <- "Western Europe"
+
+pooled$Region[pooled$Country == "Italy"] <- "Southern Europe"
+pooled$Region[pooled$Country == "Spain"] <- "Southern Europe"
+
+pooled$Region[pooled$Country == "Hong Kong"] <- "Asia"
+pooled$Region[pooled$Country == "Japan"] <- "Asia"
+pooled$Region[pooled$Country == "South Korea"] <- "Asia"
+pooled$Region[pooled$Country == "Taiwan"] <- "Asia"
+
+m1<-metagen(log(pooled$Prevalence), 
+            lower = log(pooled$prevLCL), 
+            upper = log(pooled$prevUCL),
+            studlab = pooled$Country, 
+            sm = "IRLN", method.tau = "DL", 
+            fixed = FALSE, 
+            subgroup = pooled$Region)
+
+
+summary(m1)
+c<-forest(m1,
+       layout = "revman",
+       xlim = c(0,20),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="black",
+       col.random = "black",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm"))
+
+ggsave(filename="pooled prevalence 2015.png", 
+       plot=forest(m1,
+       layout = "revman",
+       xlim = c(0,20),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="darkblue",
+       col.random = "darkblue",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       col.diamond.random = "white",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm")), height =20, width=30,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+
+# Sex specific POA prevalence  
+## Calculate national rates: Male and Females  
+```{r message=FALSE, warning=FALSE}
+library(DT)
+data.MF$`Prevalent users`<-as.numeric(data.MF$`Prevalent users`)
+data.MF$`Incident users`<-as.numeric(data.MF$`Incident users`)
+data.MF[data.MF == 0] <- NaN
+data.MF$`Non-incident users`<-data.MF$`Prevalent users`-data.MF$`Incident users`
+data.MF$prev<-data.MF$`Prevalent users`/data.MF$Population*100
+data.MF$inci<-data.MF$`Incident users`/data.MF$Population*100
+data.MF$recr<-data.MF$`Non-incident users`/data.MF$Population*100
+
+write.csv(data.MF,"D:/R/GOMAP/GOMAP POA/POAmf.csv")
+```
+## Table  
+```{r message=FALSE, warning=FALSE}
+data.MF[data.MF == 0] <- NA
+data.MF$Region[data.MF$Country == "Australia"] <- "Oceania"
+data.MF$Region[data.MF$Country == "NZ"] <- "Oceania"
+
+data.MF$Region[data.MF$Country == "Denmark"] <- "Northern Europe"
+data.MF$Region[data.MF$Country == "Finland"] <- "Northern Europe"
+data.MF$Region[data.MF$Country == "Iceland"] <- "Northern Europe"
+data.MF$Region[data.MF$Country == "Norway"] <- "Northern Europe"
+data.MF$Region[data.MF$Country == "Sweden"] <- "Northern Europe"
+
+data.MF$Region[data.MF$Country == "USMarketScan"] <- "North America"
+data.MF$Region[data.MF$Country == "USMedicaid"] <- "North America"
+data.MF$Region[data.MF$Country == "Canada"] <- "North America"
+
+data.MF$Region[data.MF$Country == "France"] <- "Western Europe"
+data.MF$Region[data.MF$Country == "Germany"] <- "Western Europe"
+data.MF$Region[data.MF$Country == "Italy"] <- "Western Europe"
+data.MF$Region[data.MF$Country == "Spain"] <- "Western Europe"
+data.MF$Region[data.MF$Country == "UK"] <- "Western Europe"
+data.MF$Region[data.MF$Country == "Netherlands"] <- "Western Europe"
+
+data.MF$Region[data.MF$Country == "HK"] <- "Asia"
+data.MF$Region[data.MF$Country == "Japan"] <- "Asia"
+data.MF$Region[data.MF$Country == "Korea"] <- "Asia"
+data.MF$Region[data.MF$Country == "Taiwan"] <- "Asia"
+data.MF$Region<-factor(data.MF$Region, levels=c("Oceania",
+                                                  "Asia","Western Europe", "Northern Europe",
+                                                  "North America"))
+data.MF$Country[data.MF$Country == "HK"] <- "Hong Kong"
+data.MF$Country[data.MF$Country == "NZ"] <- "New Zealand"
+data.MF$Country[data.MF$Country == "UK"] <- "United Kingdom"
+data.MF$Country[data.MF$Country == "USMedicaid"] <- "US Medicaid"
+data.MF$Country[data.MF$Country == "USMarketScan"] <- "US MarketScan"
+```
+## Confidence interval estimate for sex specific estimates  
+```{r message=FALSE, warning=FALSE}
+library(epitools)
+library(DT)
+data.MF.3<-data.MF
+mf.prev<-pois.approx(data.MF.3$`Prevalent users`, pt = data.MF.3$Population/100, conf.level = 0.95)
+data.MF.3$prevCIlower<-mf.prev$lower
+data.MF.3$prevCIupper<-mf.prev$upper
+
+mf.inci<-pois.approx(data.MF.3$`Incident users`, pt = data.MF.3$Population/100, conf.level = 0.95)
+data.MF.3$inciCIlower<-mf.inci$lower
+data.MF.3$inciCIupper<-mf.inci$upper
+
+mf.recr<-pois.approx(data.MF.3$`Non-incident users`, pt = data.MF.3$Population/100, conf.level = 0.95)
+data.MF.3$recrCIlower<-mf.recr$lower
+data.MF.3$recrCIupper<-mf.recr$upper
+
+datatable(data.MF.3, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+```
+## Female to male POA use ratio  
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(DT)
+sex.ratio.prev<-data.MF.3 %>% unique() %>% group_by(Year, Country) %>% 
+  summarise(ratio_prev = prev[Sex=="Female"]/prev[Sex=="Male"])
+
+sex.ratio.inci<-data.MF.3 %>% unique() %>% group_by(Year, Country) %>% 
+  summarise(ratio_inci = inci[Sex=="Female"]/inci[Sex=="Male"])
+
+sex.ratio.recr<-data.MF.3 %>% unique() %>% group_by(Year, Country) %>% 
+  summarise(ratio_recr = recr[Sex=="Female"]/recr[Sex=="Male"])
+
+rowhead<-data.MF.3[c(1,2)] %>% unique()
+
+sex.ratio<-cbind(rowhead,sex.ratio.prev$ratio_prev,
+                 sex.ratio.inci$ratio_inci, 
+                 sex.ratio.recr$ratio_recr)
+datatable(sex.ratio, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+sex.ratio<-subset(data.MF.3, Year==2015)
+sex.ratio2<-sex.ratio %>% unique() %>% group_by(Country) %>% 
+  summarise(ratio_sex = prev[Sex=="Female"]/prev[Sex=="Male"])
+
+sex.ratio3<-unique(sex.ratio)
+sex.ratio3<-sex.ratio3[c(3,13)]
+
+sex.ratio4<-aggregate(. ~ Sex, data=sex.ratio3, FUN=mean)
+sex.ratio4%>%summarise (ratio=prev[Sex=="Female"]/prev[Sex=="Male"])
+```
+## Plot sex differences in opioid prevalence  
+```{r message=FALSE, warning=FALSE}
+library(directlabels)
+library(ggplot2)
+
+data.MF$Country<-factor(data.MF$Country, levels=c(
+                           "Denmark", "Finland","Iceland","Norway","Sweden",
+                           "France","Germany", "Netherlands", "United Kingdom",
+                           "Italy","Spain",
+                           "Australia","New Zealand",
+                           "Hong Kong", "Japan","South Korea","Taiwan",
+                           "Canada","US (publicly insured)","US (privately insured)"))
+data.MF$Region<-factor(data.MF$Region, levels=c("Northern Europe",
+                                                      "Western Europe",
+                                                      "Southern Europe",
+                                                      "Oceania",
+                                                      "Asia",
+                                                      "North America"))
+b<-ggplot(data.MF, aes(x=Year, y=prev, group=Country)) +
+  geom_point(aes(color=Country))+
+  geom_line(aes(color=Country), size=0.8)+
+  theme(legend.position="right", 
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100)", colour="Country")+
+  scale_x_continuous(breaks=seq(0,2019,1), expand = c(0, 0), limits = c(2000,2024))+ 
+  scale_color_manual(values = col)+
+  ggtitle("Opioid Analgesic Prescribing 2001 - 2019, Males and Females")+
+  facet_wrap(~ Sex, nrow=1)+    
+  geom_dl(aes(label = Label, col=Country), 
+          method=list(cex = 0.8,dl.trans(x = x),
+                        "last.bumpup", 
+                        hjust = -0.2, vjust = -0.2))
+
+b
+ggsave(filename="Figure3b_MF prev.png", plot=b, height =6, width=10,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+
+e<-ggplot(data.MF, aes(x=Year, y=prev, group=Sex)) +
+  geom_point(aes(color=Sex),alpha = 0.5)+
+  geom_line(aes(color=Sex), size=0.8)+
+  theme_bw()+
+  theme(legend.position="right", 
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90, vjust = 0.5),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100)", colour="Sex")+
+  scale_x_continuous(breaks=seq(0,2019,1))+ 
+  scale_color_manual(values = c("#F1D302","#235789"))+
+  ggtitle("Opioid Analgesic Prescribing 2001 - 2019, Males and Females")+
+  facet_wrap(~ Country, nrow=4)
+
+e
+
+ggsave(filename="Figure3a_MF prev_country.png", plot=e, height =6, width=9,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+# Age-specific prevalence of opioid use  
+## Male-age-specific prevalence  
+
+```{r}
+library(DT)
+
+prev.age.M$prev<-prev.age.M$`All users`/prev.age.M$Population*100
+prev.age.M$agegroup <- factor(prev.age.M$agegroup, levels = 
+                              c("0-5" ,"6-11" ,  "12-18", "19-30" ,"31-65" , "65+" ))
+
+prev.age.M$Country[prev.age.M$Country == "HK"] <- "Hong Kong"
+prev.age.M$Country[prev.age.M$Country == "NZ"] <- "New Zealand"
+prev.age.M$Country[prev.age.M$Country == "UK"] <- "United Kingdom"
+prev.age.M$Country[prev.age.M$Country == "USMedicaid"] <- "US (public)"
+prev.age.M$Country[prev.age.M$Country == "USMarketScan"] <- "US (private)"
+```
+
+
+
+## Confidence interval of male-age-specific all use  
+```{r}
+library(epitools)
+library(DT)
+prev.age.M.2<-prev.age.M
+prev.age.M.3<-pois.approx(prev.age.M.2$`All users`, pt = prev.age.M.2$Population/100, conf.level = 0.95)
+prev.age.M.2$prevCIlower<-prev.age.M.3$lower
+prev.age.M.2$prevCIupper<-prev.age.M.3$upper
+
+datatable(prev.age.M.2, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+```
+
+## Plot Age-Male all use  
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+
+e<-ggplot(prev.age.M, aes(x=Year, y=prev, group=agegroup)) +
+  geom_point(aes(color=agegroup))+
+  geom_line(aes(color=agegroup), size=0.8, alpha=0.8)+
+  theme_bw()+
+  theme(legend.position="right", 
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100 individuals)", colour="Age (years)")+
+  scale_x_continuous(breaks=seq(0,2019,1))+ 
+  scale_colour_brewer(palette = "Dark2")+
+  ggtitle("Males")+
+  facet_wrap(~ Country, nrow=4)
+
+e
+
+ggsave(filename="App 7_Age M prev.png", plot=e, height =6, width=12,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=800)
+write.csv(prev.age.M.2,"D:/R/GOMAP/GOMAP POA/prev.age.M.csv")
+```
+## Plot Age-Male all use by age facets  
+```{r fig.height=12, fig.width=12, message=FALSE, warning=FALSE}
+library(ggplot2)
+
+e<-ggplot(prev.age.M, aes(x=Year, y=prev, group=Country)) +
+  geom_point(aes(color=Country))+
+  geom_line(aes(color=Country), size=0.8, alpha=0.8)+
+  theme_bw()+
+  theme(legend.position="right", 
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100 individuals)")+
+  scale_x_continuous(breaks=seq(0,2019,1), expand = c(0, 0), limits = c(2000,2020))+
+  scale_color_manual(values = col)+
+  ggtitle("Males")+
+  facet_wrap(~ agegroup, nrow=2)
+
+e
+ggsave(filename="App7_Age M prev2.png", plot=e, height =10, width=8,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=800)
+
+
+```
+
+
+
+## Female-age-specific prevalence of opioid use  
+```{r}
+library(DT)
+
+prev.age.F$prev<-prev.age.F$`All users`/prev.age.F$Population*100
+prev.age.F$agegroup <- factor(prev.age.F$agegroup, levels = 
+                              c("0-5" ,"6-11" ,  "12-18", "19-30" ,"31-65" , "65+" ))
+
+prev.age.F$Country[prev.age.F$Country == "HK"] <- "Hong Kong"
+prev.age.F$Country[prev.age.F$Country == "NZ"] <- "New Zealand"
+prev.age.F$Country[prev.age.F$Country == "UK"] <- "United Kingdom"
+prev.age.F$Country[prev.age.F$Country == "USMedicaid"] <- "US (public)"
+prev.age.F$Country[prev.age.F$Country == "USMarketScan"] <- "US (private)"
+```
+
+
+
+## Confidence interval of female-age-specific all use    
+```{r}
+library(epitools)
+library(DT)
+prev.age.F.2<-prev.age.F
+prev.age.F.3<-pois.approx(prev.age.F.2$`All users`, pt = prev.age.F.2$Population/100, conf.level = 0.95)
+prev.age.F.2$prevCIlower<-prev.age.F.3$lower
+prev.age.F.2$prevCIupper<-prev.age.F.3$upper
+
+datatable(prev.age.F.2, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+```
+
+## Plot Age-Female all use  
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+
+e<-ggplot(prev.age.F, aes(x=Year, y=prev, group=agegroup)) +
+  geom_point(aes(color=agegroup))+
+  geom_line(aes(color=agegroup), size=0.8, alpha=0.8)+
+  theme_bw()+
+  theme(legend.position="right", 
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100 individuals)", colour="Age (years)")+
+  scale_x_continuous(breaks=seq(0,2019,1))+ 
+  scale_colour_brewer(palette = "Dark2")+
+  ggtitle("Females")+
+  facet_wrap(~ Country, nrow=4)
+
+e
+
+ggsave(filename="Age F prev.png", plot=e, height =6, width=12,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=800)
+write.csv(prev.age.F.2,"D:/R/GOMAP/GOMAP POA/prev.age.F.csv")
+```
+## Plot Age-Female all use- agegroup  
+```{r fig.height=12, fig.width=12, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(directlabels)
+e<-ggplot(prev.age.F, aes(x=Year, y=prev, group=Country)) +
+  geom_point(aes(color=Country))+
+  geom_line(aes(color=Country), size=0.8, alpha=0.8)+
+  theme_bw()+
+  theme(legend.position="right", 
+        legend.key = element_blank(),
+        legend.text=element_text(size=10),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x=element_text(angle=90),
+        axis.line = element_line(colour = "black"))+ 
+  labs(y="Prevalence (per 100 individuals)")+
+  scale_x_continuous(breaks=seq(0,2019,1), expand = c(0, 0), limits = c(2000,2020))+
+  scale_color_manual(values = col)+
+  ggtitle("Females")+
+  facet_wrap(~ agegroup, nrow=2)
+
+e
+
+ggsave(filename="App7_Age F prev2.png", plot=e, height =10, width=8,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=800)
+```
+# Meta analysis: Pooled prevalence 2015 (all sites) in subpopulation  
+## Prepare data  
+```{r fig.height=25, fig.width=25, message=FALSE, warning=FALSE}
+library(meta)
+library(forestplot)
+library(epitools)
+pooled_M<-prev.age.M[prev.age.M$Year==2015,]
+pooled_M<-pooled_M[-c(7)]
+pooled_M$subpop[pooled_M$agegroup == "0-5"] <- "paediatric"
+pooled_M$subpop[pooled_M$agegroup == "6-11"] <- "paediatric"
+pooled_M$subpop[pooled_M$agegroup == "12-18"] <- "paediatric"
+pooled_M$subpop[pooled_M$agegroup == "19-30"] <- "adults"
+pooled_M$subpop[pooled_M$agegroup == "31-65"] <- "adults"
+pooled_M$subpop[pooled_M$agegroup == "65+"] <- "older adults"
+pooled_M<-pooled_M[-c(2,4)]
+pooled_M<-aggregate(. ~ Year+Country+subpop, data=pooled_M, FUN=sum)
+pooled_M$Prevalence<-pooled_M$`All users`/pooled_M$Population*100
+pooled_M_pois<-pois.approx(pooled_M$`All users`, pt = pooled_M$Population/100, conf.level = 0.95)
+pooled_M$prevCIlower<-pooled_M_pois$lower
+pooled_M$prevCIupper<-pooled_M_pois$upper
+pooled_M_allsub<-pooled_M
+
+pooled_F<-prev.age.F[prev.age.F$Year==2015,]
+pooled_F<-pooled_F[-c(7)]
+pooled_F$subpop[pooled_F$agegroup == "0-5"] <- "paediatric"
+pooled_F$subpop[pooled_F$agegroup == "6-11"] <- "paediatric"
+pooled_F$subpop[pooled_F$agegroup == "12-18"] <- "paediatric"
+pooled_F$subpop[pooled_F$agegroup == "19-30"] <- "adults"
+pooled_F$subpop[pooled_F$agegroup == "31-65"] <- "adults"
+pooled_F$subpop[pooled_F$agegroup == "65+"] <- "older adults"
+pooled_F<-pooled_F[-c(2,4)]
+pooled_F<-aggregate(. ~ Year+Country+subpop, data=pooled_F, FUN=sum)
+pooled_F$Prevalence<-pooled_F$`All users`/pooled_F$Population*100
+pooled_F_pois<-pois.approx(pooled_F$`All users`, pt = pooled_F$Population/100, conf.level = 0.95)
+
+pooled_F$prevCIlower<-pooled_F_pois$lower
+pooled_F$prevCIupper<-pooled_F_pois$upper
+pooled_F_allsub<-pooled_F
+```
+
+## Paediatric males 2015 pooled opioid use prevalence  
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+pooled<-subset(pooled_M_allsub,subpop=="paediatric")
+pooled$Prevalence<-as.numeric(format(round(pooled$Prevalence, 2), nsmall = 2))
+pooled$prevLCL<-as.numeric(format(round(pooled$prevCIlower, 2), nsmall = 2))
+pooled$prevUCL<-as.numeric(format(round(pooled$prevCIupper, 2), nsmall = 2))
+
+pooled$Country[pooled$Country == "Korea"] <- "South Korea"
+pooled$Country[pooled$Country == "US (public)"] <- "US (publicly insured)"
+pooled$Country[pooled$Country == "US (private)"] <- "US (privately insured)"
+
+pooled$Region<-"."
+pooled$Region[pooled$Country == "Australia"] <- "Oceania"
+pooled$Region[pooled$Country == "New Zealand"] <- "Oceania"
+
+pooled$Region[pooled$Country == "Denmark"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Finland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Iceland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Norway"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Sweden"] <- "Northern Europe"
+
+pooled$Region[pooled$Country == "US (publicly insured)"] <- "North America"
+pooled$Region[pooled$Country == "US (privately insured)"] <- "North America"
+pooled$Region[pooled$Country == "Canada"] <- "North America"
+
+pooled$Region[pooled$Country == "France"] <- "Western Europe"
+pooled$Region[pooled$Country == "Germany"] <- "Western Europe"
+pooled$Region[pooled$Country == "United Kingdom"] <- "Western Europe"
+pooled$Region[pooled$Country == "Netherlands"] <- "Western Europe"
+
+pooled$Region[pooled$Country == "Italy"] <- "Southern Europe"
+pooled$Region[pooled$Country == "Spain"] <- "Southern Europe"
+
+pooled$Region[pooled$Country == "Hong Kong"] <- "Asia"
+pooled$Region[pooled$Country == "Japan"] <- "Asia"
+pooled$Region[pooled$Country == "South Korea"] <- "Asia"
+pooled$Region[pooled$Country == "Taiwan"] <- "Asia"
+
+m1<-metagen(log(pooled$Prevalence), 
+            lower = log(pooled$prevLCL), 
+            upper = log(pooled$prevUCL),
+            studlab = pooled$Country, 
+            sm = "IRLN", method.tau = "DL", 
+            fixed = FALSE, 
+            subgroup = pooled$Region)
+
+
+summary(m1)
+c<-forest(m1,
+       layout = "revman",
+       xlim = c(0,12),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="black",
+       col.random = "black",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm"))
+
+ggsave(filename="Appendix_paediatric pooled prevalence 2015_M.png", 
+       plot=forest(m1,
+       layout = "revman",
+       xlim = c(0,12),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="darkblue",
+       col.random = "darkblue",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       col.diamond.random = "white",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence - paediatric",
+       colgap.forest.left = unit(50,"mm")), height=10, width=5,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=800)
+```  
+
+## Adults males 2015 pooled opioid use prevalence  
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+pooled<-subset(pooled_M_allsub,subpop=="adults")
+pooled$Prevalence<-as.numeric(format(round(pooled$Prevalence, 2), nsmall = 2))
+pooled$prevLCL<-as.numeric(format(round(pooled$prevCIlower, 2), nsmall = 2))
+pooled$prevUCL<-as.numeric(format(round(pooled$prevCIupper, 2), nsmall = 2))
+
+pooled$Country[pooled$Country == "Korea"] <- "South Korea"
+pooled$Country[pooled$Country == "US (public)"] <- "US (publicly insured)"
+pooled$Country[pooled$Country == "US (private)"] <- "US (privately insured)"
+
+pooled$Region<-"."
+pooled$Region[pooled$Country == "Australia"] <- "Oceania"
+pooled$Region[pooled$Country == "New Zealand"] <- "Oceania"
+
+pooled$Region[pooled$Country == "Denmark"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Finland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Iceland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Norway"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Sweden"] <- "Northern Europe"
+
+pooled$Region[pooled$Country == "US (publicly insured)"] <- "North America"
+pooled$Region[pooled$Country == "US (privately insured)"] <- "North America"
+pooled$Region[pooled$Country == "Canada"] <- "North America"
+
+pooled$Region[pooled$Country == "France"] <- "Western Europe"
+pooled$Region[pooled$Country == "Germany"] <- "Western Europe"
+pooled$Region[pooled$Country == "United Kingdom"] <- "Western Europe"
+pooled$Region[pooled$Country == "Netherlands"] <- "Western Europe"
+
+pooled$Region[pooled$Country == "Italy"] <- "Southern Europe"
+pooled$Region[pooled$Country == "Spain"] <- "Southern Europe"
+
+pooled$Region[pooled$Country == "Hong Kong"] <- "Asia"
+pooled$Region[pooled$Country == "Japan"] <- "Asia"
+pooled$Region[pooled$Country == "South Korea"] <- "Asia"
+pooled$Region[pooled$Country == "Taiwan"] <- "Asia"
+
+m1<-metagen(log(pooled$Prevalence), 
+            lower = log(pooled$prevLCL), 
+            upper = log(pooled$prevUCL),
+            studlab = pooled$Country, 
+            sm = "IRLN", method.tau = "DL", 
+            fixed = FALSE, 
+            subgroup = pooled$Region)
+
+
+summary(m1)
+c<-forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="black",
+       col.random = "black",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm"))
+
+ggsave(filename="Appendix_adults M pooled prevalence 2015.png", 
+       plot=forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="darkblue",
+       col.random = "darkblue",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       col.diamond.random = "black",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence - adults",
+       colgap.forest.left = unit(50,"mm")), device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+## Older adults males 2015 pooled opioid use prevalence  
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+pooled<-subset(pooled_M_allsub,subpop=="older adults")
+pooled$Prevalence<-as.numeric(format(round(pooled$Prevalence, 2), nsmall = 2))
+pooled$prevLCL<-as.numeric(format(round(pooled$prevCIlower, 2), nsmall = 2))
+pooled$prevUCL<-as.numeric(format(round(pooled$prevCIupper, 2), nsmall = 2))
+
+pooled$Country[pooled$Country == "Korea"] <- "South Korea"
+pooled$Country[pooled$Country == "US (public)"] <- "US (publicly insured)"
+pooled$Country[pooled$Country == "US (private)"] <- "US (privately insured)"
+
+pooled$Region<-"."
+pooled$Region[pooled$Country == "Australia"] <- "Oceania"
+pooled$Region[pooled$Country == "New Zealand"] <- "Oceania"
+
+pooled$Region[pooled$Country == "Denmark"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Finland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Iceland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Norway"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Sweden"] <- "Northern Europe"
+
+pooled$Region[pooled$Country == "US (publicly insured)"] <- "North America"
+pooled$Region[pooled$Country == "US (privately insured)"] <- "North America"
+pooled$Region[pooled$Country == "Canada"] <- "North America"
+
+pooled$Region[pooled$Country == "France"] <- "Western Europe"
+pooled$Region[pooled$Country == "Germany"] <- "Western Europe"
+pooled$Region[pooled$Country == "United Kingdom"] <- "Western Europe"
+pooled$Region[pooled$Country == "Netherlands"] <- "Western Europe"
+
+pooled$Region[pooled$Country == "Italy"] <- "Southern Europe"
+pooled$Region[pooled$Country == "Spain"] <- "Southern Europe"
+
+pooled$Region[pooled$Country == "Hong Kong"] <- "Asia"
+pooled$Region[pooled$Country == "Japan"] <- "Asia"
+pooled$Region[pooled$Country == "South Korea"] <- "Asia"
+pooled$Region[pooled$Country == "Taiwan"] <- "Asia"
+
+m1<-metagen(log(pooled$Prevalence), 
+            lower = log(pooled$prevLCL), 
+            upper = log(pooled$prevUCL),
+            studlab = pooled$Country, 
+            sm = "IRLN", method.tau = "DL", 
+            fixed = FALSE, 
+            subgroup = pooled$Region)
+
+
+summary(m1)
+c<-forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="black",
+       col.random = "black",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm"))
+
+ggsave(filename="Appendix_older adults M pooled prevalence 2015.png", 
+       plot=forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="darkblue",
+       col.random = "darkblue",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       col.diamond.random = "black",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence - older adults",
+       colgap.forest.left = unit(50,"mm")), device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+## Paediatric females 2015 pooled opioid use prevalence   
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+pooled<-subset(pooled_F_allsub,subpop=="paediatric")
+pooled$Prevalence<-as.numeric(format(round(pooled$Prevalence, 2), nsmall = 2))
+pooled$prevLCL<-as.numeric(format(round(pooled$prevCIlower, 2), nsmall = 2))
+pooled$prevUCL<-as.numeric(format(round(pooled$prevCIupper, 2), nsmall = 2))
+
+pooled$Country[pooled$Country == "Korea"] <- "South Korea"
+pooled$Country[pooled$Country == "US (public)"] <- "US (publicly insured)"
+pooled$Country[pooled$Country == "US (private)"] <- "US (privately insured)"
+
+pooled$Region<-"."
+pooled$Region[pooled$Country == "Australia"] <- "Oceania"
+pooled$Region[pooled$Country == "New Zealand"] <- "Oceania"
+
+pooled$Region[pooled$Country == "Denmark"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Finland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Iceland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Norway"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Sweden"] <- "Northern Europe"
+
+pooled$Region[pooled$Country == "US (publicly insured)"] <- "North America"
+pooled$Region[pooled$Country == "US (privately insured)"] <- "North America"
+pooled$Region[pooled$Country == "Canada"] <- "North America"
+
+pooled$Region[pooled$Country == "France"] <- "Western Europe"
+pooled$Region[pooled$Country == "Germany"] <- "Western Europe"
+pooled$Region[pooled$Country == "United Kingdom"] <- "Western Europe"
+pooled$Region[pooled$Country == "Netherlands"] <- "Western Europe"
+
+pooled$Region[pooled$Country == "Italy"] <- "Southern Europe"
+pooled$Region[pooled$Country == "Spain"] <- "Southern Europe"
+
+pooled$Region[pooled$Country == "Hong Kong"] <- "Asia"
+pooled$Region[pooled$Country == "Japan"] <- "Asia"
+pooled$Region[pooled$Country == "South Korea"] <- "Asia"
+pooled$Region[pooled$Country == "Taiwan"] <- "Asia"
+
+m1<-metagen(log(pooled$Prevalence), 
+            lower = log(pooled$prevLCL), 
+            upper = log(pooled$prevUCL),
+            studlab = pooled$Country, 
+            sm = "IRLN", method.tau = "DL", 
+            fixed = FALSE, 
+            subgroup = pooled$Region)
+
+
+summary(m1)
+c<-forest(m1,
+       layout = "revman",
+       xlim = c(0,12),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="black",
+       col.random = "black",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm"))
+
+ggsave(filename="Appendix_paediatric pooled prevalence F 2015.png", 
+       plot=forest(m1,
+       layout = "revman",
+       xlim = c(0,12),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="darkblue",
+       col.random = "darkblue",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       col.diamond.random = "white",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence - paediatric",
+       colgap.forest.left = unit(50,"mm")), height=10, width=5,device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=800)
+```  
+
+## Adults females 2015 pooled opioid use prevalence  
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+pooled<-subset(pooled_F_allsub,subpop=="adults")
+pooled$Prevalence<-as.numeric(format(round(pooled$Prevalence, 2), nsmall = 2))
+pooled$prevLCL<-as.numeric(format(round(pooled$prevCIlower, 2), nsmall = 2))
+pooled$prevUCL<-as.numeric(format(round(pooled$prevCIupper, 2), nsmall = 2))
+
+pooled$Country[pooled$Country == "Korea"] <- "South Korea"
+pooled$Country[pooled$Country == "US (public)"] <- "US (publicly insured)"
+pooled$Country[pooled$Country == "US (private)"] <- "US (privately insured)"
+
+pooled$Region<-"."
+pooled$Region[pooled$Country == "Australia"] <- "Oceania"
+pooled$Region[pooled$Country == "New Zealand"] <- "Oceania"
+
+pooled$Region[pooled$Country == "Denmark"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Finland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Iceland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Norway"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Sweden"] <- "Northern Europe"
+
+pooled$Region[pooled$Country == "US (publicly insured)"] <- "North America"
+pooled$Region[pooled$Country == "US (privately insured)"] <- "North America"
+pooled$Region[pooled$Country == "Canada"] <- "North America"
+
+pooled$Region[pooled$Country == "France"] <- "Western Europe"
+pooled$Region[pooled$Country == "Germany"] <- "Western Europe"
+pooled$Region[pooled$Country == "United Kingdom"] <- "Western Europe"
+pooled$Region[pooled$Country == "Netherlands"] <- "Western Europe"
+
+pooled$Region[pooled$Country == "Italy"] <- "Southern Europe"
+pooled$Region[pooled$Country == "Spain"] <- "Southern Europe"
+
+pooled$Region[pooled$Country == "Hong Kong"] <- "Asia"
+pooled$Region[pooled$Country == "Japan"] <- "Asia"
+pooled$Region[pooled$Country == "South Korea"] <- "Asia"
+pooled$Region[pooled$Country == "Taiwan"] <- "Asia"
+
+m1<-metagen(log(pooled$Prevalence), 
+            lower = log(pooled$prevLCL), 
+            upper = log(pooled$prevUCL),
+            studlab = pooled$Country, 
+            sm = "IRLN", method.tau = "DL", 
+            fixed = FALSE, 
+            subgroup = pooled$Region)
+
+
+summary(m1)
+c<-forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="black",
+       col.random = "black",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm"))
+
+ggsave(filename="Appendix_adults F pooled prevalence 2015.png", 
+       plot=forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="darkblue",
+       col.random = "darkblue",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       col.diamond.random = "black",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence - adults",
+       colgap.forest.left = unit(50,"mm")), device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+## Older adults females 2015 pooled opioid use prevalence    
+```{r fig.height=15, fig.width=15, message=FALSE, warning=FALSE}
+pooled<-subset(pooled_F_allsub,subpop=="older adults")
+pooled$Prevalence<-as.numeric(format(round(pooled$Prevalence, 2), nsmall = 2))
+pooled$prevLCL<-as.numeric(format(round(pooled$prevCIlower, 2), nsmall = 2))
+pooled$prevUCL<-as.numeric(format(round(pooled$prevCIupper, 2), nsmall = 2))
+
+pooled$Country[pooled$Country == "Korea"] <- "South Korea"
+pooled$Country[pooled$Country == "US (public)"] <- "US (publicly insured)"
+pooled$Country[pooled$Country == "US (private)"] <- "US (privately insured)"
+
+pooled$Region<-"."
+pooled$Region[pooled$Country == "Australia"] <- "Oceania"
+pooled$Region[pooled$Country == "New Zealand"] <- "Oceania"
+
+pooled$Region[pooled$Country == "Denmark"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Finland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Iceland"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Norway"] <- "Northern Europe"
+pooled$Region[pooled$Country == "Sweden"] <- "Northern Europe"
+
+pooled$Region[pooled$Country == "US (publicly insured)"] <- "North America"
+pooled$Region[pooled$Country == "US (privately insured)"] <- "North America"
+pooled$Region[pooled$Country == "Canada"] <- "North America"
+
+pooled$Region[pooled$Country == "France"] <- "Western Europe"
+pooled$Region[pooled$Country == "Germany"] <- "Western Europe"
+pooled$Region[pooled$Country == "United Kingdom"] <- "Western Europe"
+pooled$Region[pooled$Country == "Netherlands"] <- "Western Europe"
+
+pooled$Region[pooled$Country == "Italy"] <- "Southern Europe"
+pooled$Region[pooled$Country == "Spain"] <- "Southern Europe"
+
+pooled$Region[pooled$Country == "Hong Kong"] <- "Asia"
+pooled$Region[pooled$Country == "Japan"] <- "Asia"
+pooled$Region[pooled$Country == "South Korea"] <- "Asia"
+pooled$Region[pooled$Country == "Taiwan"] <- "Asia"
+
+m1<-metagen(log(pooled$Prevalence), 
+            lower = log(pooled$prevLCL), 
+            upper = log(pooled$prevUCL),
+            studlab = pooled$Country, 
+            sm = "IRLN", method.tau = "DL", 
+            fixed = FALSE, 
+            subgroup = pooled$Region)
+
+
+summary(m1)
+c<-forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="black",
+       col.random = "black",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence",
+       colgap.forest.left = unit(50,"mm"))
+
+ggsave(filename="Appendix_older adults F pooled prevalence 2015.png", 
+       plot=forest(m1,
+       layout = "revman",
+       xlim = c(0,40),
+       leftlabs = c("Source","Rate","95% CI"),
+       lab.e = "Intervention",
+       pooled.totals = TRUE,
+       smlab = "",
+       col.by="darkblue",
+       col.random = "darkblue",
+       text.random = "Overall effect",
+       print.tau2 = TRUE,
+       col.diamond.random = "black",
+       col.diamond.lines = "black",
+       col.diamond.lines.random = "black",
+       print.I2.ci = TRUE,
+       digits.sd = 2,
+       ci.vertices=TRUE,
+       JAMA.pval=TRUE, 
+                 title="2015 pooled prevalence - older adults",
+       colgap.forest.left = unit(50,"mm")), device="png", 
+       path="D:/R/GOMAP/GOMAP POA/Updated_analysis/Figures",
+       dpi=500)
+```
+
+# Multivariable linear mixed model  
+## prepare dataframe  
+```{r message=FALSE, warning=FALSE}
+##Add regions and plot labels=======
+library(directlabels)
+library(ggplot2)
+library(tidyr)
+gbd$location[gbd$location == "Taiwan (Province of China)"] <- "Taiwan"
+gbd$location[gbd$location == "Republic of Korea"] <- "Korea"
+
+gbd$Region[gbd$location == "Australia"] <- "Oceania"
+gbd$Region[gbd$location == "New Zealand"] <- "Oceania"
+
+gbd$Region[gbd$location == "Denmark"] <- "Northern Europe"
+gbd$Region[gbd$location == "Finland"] <- "Northern Europe"
+gbd$Region[gbd$location == "Iceland"] <- "Northern Europe"
+gbd$Region[gbd$location == "Norway"] <- "Northern Europe"
+gbd$Region[gbd$location == "Sweden"] <- "Northern Europe"
+
+gbd$Region[gbd$location == "United States of America"] <- "North America"
+gbd$Region[gbd$location == "Canada"] <- "North America"
+
+gbd$Region[gbd$location == "France"] <- "Western Europe"
+gbd$Region[gbd$location == "Germany"] <- "Western Europe"
+gbd$Region[gbd$location == "Italy"] <- "Southern Europe"
+gbd$Region[gbd$location == "Spain"] <- "Southern Europe"
+gbd$Region[gbd$location == "United Kingdom"] <- "Western Europe"
+gbd$Region[gbd$location == "Netherlands"] <- "Western Europe"
+
+gbd$Region[gbd$location == "Japan"] <- "Asia"
+gbd$Region[gbd$location == "South Korea"] <- "Asia"
+gbd$Region[gbd$location == "Taiwan"] <- "Asia"
+gbd$Region<-factor(gbd$Region, levels=c("Oceania",
+                           "Asia","Western Europe",
+                           "Southern Europe", "Northern Europe",
+                           "North America"))
+
+gbd$Label<- gbd$location
+gbd$Label[gbd$location == "New Zealand"] <- "NZ"
+gbd$Label[gbd$location == "United Kingdom"] <- "UK"
+gbd$Label[gbd$location == "United States of America"] <- "US"
+
+gbd.2<-subset(gbd,metric=="Percent")
+colnames(gbd.2)[which(names(gbd.2) == "year")] <- "Year"
+colnames(gbd.2)[which(names(gbd.2) == "sex")] <- "Sex"
+colnames(gbd.2)[which(names(gbd.2) == "age")] <- "Age"
+colnames(gbd.2)[which(names(gbd.2) == "location")] <- "Country"
+colnames(gbd.2)[which(names(gbd.2) == "val")] <- "Percent"
+
+US.prev<-subset(gbd.2,Country=="United States of America")
+US.prev$Country[US.prev$Country=="United States of America"]<-
+"US (privately insured)"
+gbd.2<-rbind(gbd.2,US.prev)
+gbd.2$Country[gbd.2$Country=="United States of America"]<-
+"US (publicly insured)"
+
+```
+
+## prepare dataframe for updated cancer data  
+```{r message=FALSE, warning=FALSE}
+##Add regions and plot labels=======
+library(directlabels)
+library(ggplot2)
+library(tidyr)
+library(data.table)
+library(dplyr)
+
+gbd_cancer$location[gbd_cancer$location == "Taiwan (Province of China)"] <- "Taiwan"
+gbd_cancer$location[gbd_cancer$location == "Republic of Korea"] <- "Korea"
+
+gbd_cancer$Region[gbd_cancer$location == "Australia"] <- "Oceania"
+gbd_cancer$Region[gbd_cancer$location == "New Zealand"] <- "Oceania"
+
+gbd_cancer$Region[gbd_cancer$location == "Denmark"] <- "Northern Europe"
+gbd_cancer$Region[gbd_cancer$location == "Finland"] <- "Northern Europe"
+gbd_cancer$Region[gbd_cancer$location == "Iceland"] <- "Northern Europe"
+gbd_cancer$Region[gbd_cancer$location == "Norway"] <- "Northern Europe"
+gbd_cancer$Region[gbd_cancer$location == "Sweden"] <- "Northern Europe"
+
+gbd_cancer$Region[gbd_cancer$location == "United States of America"] <- "North America"
+gbd_cancer$Region[gbd_cancer$location == "Canada"] <- "North America"
+
+gbd_cancer$Region[gbd_cancer$location == "France"] <- "Western Europe"
+gbd_cancer$Region[gbd_cancer$location == "Germany"] <- "Western Europe"
+gbd_cancer$Region[gbd_cancer$location == "Italy"] <- "Southern Europe"
+gbd_cancer$Region[gbd_cancer$location == "Spain"] <- "Southern Europe"
+gbd_cancer$Region[gbd_cancer$location == "United Kingdom"] <- "Western Europe"
+gbd_cancer$Region[gbd_cancer$location == "Netherlands"] <- "Western Europe"
+
+gbd_cancer$Region[gbd_cancer$location == "Japan"] <- "Asia"
+gbd_cancer$Region[gbd_cancer$location == "South Korea"] <- "Asia"
+gbd_cancer$Region[gbd_cancer$location == "Taiwan"] <- "Asia"
+gbd_cancer$Region<-factor(gbd_cancer$Region, levels=c("Oceania",
+                           "Asia","Western Europe",
+                           "Southern Europe",
+                           "Northern Europe",
+                           "North America"))
+
+gbd_cancer$Label<- gbd_cancer$location
+gbd_cancer$Label[gbd_cancer$location == "New Zealand"] <- "NZ"
+gbd_cancer$Label[gbd_cancer$location == "United Kingdom"] <- "UK"
+gbd_cancer$Label[gbd_cancer$location == "United States of America"] <- "US"
+
+colnames(gbd_cancer)[which(names(gbd_cancer) == "year")] <- "Year"
+colnames(gbd_cancer)[which(names(gbd_cancer) == "sex")] <- "Sex"
+colnames(gbd_cancer)[which(names(gbd_cancer) == "age")] <- "Age"
+colnames(gbd_cancer)[which(names(gbd_cancer) == "location")] <- "Country"
+colnames(gbd_cancer)[which(names(gbd_cancer) == "val")] <- "Percent"
+
+US.prev_ca<-subset(gbd_cancer,Country=="United States of America")
+US.prev_ca$Country[US.prev_ca$Country=="United States of America"]<-
+"US (privately insured)"
+gbd_cancer2<-rbind(gbd_cancer,US.prev_ca)
+gbd_cancer2$Country[gbd_cancer2$Country=="United States of America"]<-
+"US (publicly insured)"
+
+gbd_cancer2_death<-subset(gbd_cancer2,measure=="Deaths")
+gbd_cancer2_death$deaths<-gbd_cancer2_death$Percent/1000
+gbd_cancer2_death2<-gbd_cancer2_death[c(2,3,5,7,13)]
+gbd_cancer2_death2 <- as.data.frame(gbd_cancer2_death2)
+cawol<-setDT(gbd_cancer2_death2)[, want := (deaths[cause == "Total cancers"] - deaths[cause == "Leukemia"]), by = .(Sex,Year,Country)]
+cawol<-as.data.frame(cawol)
+cawol2<-cawol[c(1,2,4,6)]
+cawol2$cause<-"cawol"
+cawol2<-dplyr::rename(cawol2, deaths = want)
+gbd_cancer2_death2 <- as.data.frame(gbd_cancer2_death2)
+gbd_cancer2_death3<-gbd_cancer2_death2[-c(6)]
+cawol2<-unique(cawol2)
+cancer_deaths<-rbind(gbd_cancer2_death3,cawol2)
+
+gbd_cancer2_prev<-subset(gbd_cancer2,measure=="Prevalence")
+gbd_cancer2_prev$prev<-gbd_cancer2_prev$Percent/1000
+gbd_cancer2_prev<-gbd_cancer2_prev[c(2,3,5,7,13)]
+gbd_cancer2_prev2 <- as.data.frame(gbd_cancer2_prev)
+cawol_prev<-setDT(gbd_cancer2_prev2)[, want := (prev[cause == "Total cancers"] - prev[cause == "Leukemia"]), by = .(Sex,Year,Country)]
+cawol_prev<-as.data.frame(cawol_prev)
+cawol_prev2<-cawol_prev[c(1,2,4,6)]
+cawol_prev2$cause<-"cawol"
+cawol_prev2<-dplyr::rename(cawol_prev2, prev = want)
+gbd_cancer2_prev2 <- as.data.frame(gbd_cancer2_prev2)
+gbd_cancer2_prev3<-gbd_cancer2_prev2[-c(6)]
+cawol_prev2<-unique(cawol_prev2)
+cancer_prev<-rbind(gbd_cancer2_prev3,cawol_prev2)
+
+```
+
+```{r message=FALSE, warning=FALSE}
+library(directlabels)
+library(ggplot2)
+library(tidyr)
+## GBD OUD prevalence
+OUD<-subset(gbd.2,cause=="Opioid use disorders")
+OUD<-OUD%>%dplyr::rename(OUD_prev="Percent")
+LBP<-subset(gbd.2,cause=="Low back pain")
+LBP<-LBP%>%dplyr::rename(LBP_prev="Percent")
+NP<-subset(gbd.2,cause=="Neck pain")
+NP<-NP%>%dplyr::rename(NP_prev="Percent")
+cawol_deaths<-subset(cancer_deaths,cause=="cawol")
+cawol_deaths<-cawol_deaths%>%dplyr::rename(cawol_death="deaths")
+Leukemia_deaths<-subset(cancer_deaths,cause=="Leukemia")
+Leukemia_deaths<-Leukemia_deaths%>%dplyr::rename(Leukemia_deaths="deaths")
+
+cawol_prevvv<-subset(cancer_prev,cause=="cawol")
+cawol_prevvv<-cawol_prevvv%>%dplyr::rename(cawol_prev="prev")
+leukaemia_prevvv<-subset(cancer_prev,cause=="Leukemia")
+leukaemia_prevvv<-leukaemia_prevvv%>%dplyr::rename(leukaemia_prev="prev")
+
+
+Colon_Ca<-subset(gbd.2,cause=="Colon and rectum cancer")
+Colon_Ca<-Colon_Ca%>%dplyr::rename(Colon_Ca_prev="Percent")
+Oral_Ca<-subset(gbd.2,cause=="Lip and oral cavity cancer")
+Oral_Ca<-Oral_Ca%>%dplyr::rename(Oral_Ca_prev="Percent")
+Naso_Ca<-subset(gbd.2,cause=="Nasopharynx cancer")
+Naso_Ca<-Naso_Ca%>%dplyr::rename(Naso_Ca_prev="Percent")
+Lung_Ca<-subset(gbd.2,cause=="Tracheal, bronchus, and lung cancer")
+Lung_Ca<-Lung_Ca%>%dplyr::rename(Lung_Ca_prev="Percent")
+Breast_Ca<-subset(gbd.2,cause=="Breast cancer")
+Breast_Ca<-Breast_Ca%>%dplyr::rename(Breast_Ca_prev="Percent")
+Crv_Ca<-subset(gbd.2,cause=="Cervical cancer")
+Crv_Ca<-Crv_Ca%>%dplyr::rename(Crv_Ca_prev="Percent")
+Utr_Ca<-subset(gbd.2,cause=="Uterine cancer")
+Utr_Ca<-Utr_Ca%>%dplyr::rename(Utr_Ca_prev="Percent")
+Prs_Ca<-subset(gbd.2,cause=="Prostate cancer")
+Prs_Ca<-Prs_Ca%>%dplyr::rename(Prs_Ca_prev="Percent")
+Pharynx_Ca<-subset(gbd.2,cause=="Other pharynx cancer")
+Pharynx_Ca<-Pharynx_Ca%>%dplyr::rename(Pharynx_Ca_prev="Percent")
+Gall_Ca<-subset(gbd.2,cause=="Gallbladder and biliary tract cancer")
+Gall_Ca<-Gall_Ca%>%dplyr::rename(Gall_Ca_prev="Percent")
+Panc_Ca<-subset(gbd.2,cause=="Pancreatic cancer")
+Panc_Ca<-Panc_Ca%>%dplyr::rename(Panc_Ca_prev="Percent")
+Melanoma<-subset(gbd.2,cause=="Malignant skin melanoma")
+Melanoma<-Melanoma%>%dplyr::rename(Melanoma_prev="Percent")
+Skin_Ca<-subset(gbd.2,cause=="Non-melanoma skin cancer")
+Skin_Ca<-Skin_Ca%>%dplyr::rename(Skin_Ca_prev="Percent")
+Ova_Ca<-subset(gbd.2,cause=="Ovarian cancer")
+Ova_Ca<-Ova_Ca%>%dplyr::rename(Ova_Ca_prev="Percent")
+Testi_Ca<-subset(gbd.2,cause=="Testicular cancer")
+Testi_Ca<-Testi_Ca%>%dplyr::rename(Testi_Ca_prev="Percent")
+Kidn_Ca<-subset(gbd.2,cause=="Kidney cancer")
+Kidn_Ca<-Kidn_Ca%>%dplyr::rename(Kidn_Ca_prev="Percent")
+Bladder_Ca<-subset(gbd.2,cause=="Bladder cancer")
+Bladder_Ca<-Bladder_Ca%>%dplyr::rename(Bladder_Ca_prev="Percent")
+Brain_Ca<-subset(gbd.2,cause=="Brain and central nervous system cancer")
+Brain_Ca<-Brain_Ca%>%dplyr::rename(Brain_Ca_prev="Percent")
+Thyroid_Ca<-subset(gbd.2,cause=="Thyroid cancer")
+Thyroid_Ca<-Thyroid_Ca%>%dplyr::rename(Thyroid_Ca_prev="Percent")
+Injuries<-subset(gbd.2,cause=="Injuries")
+Injuries<-Injuries%>%dplyr::rename(Injuries_prev="Percent")
+Mesothelioma<-subset(gbd.2,cause=="Mesothelioma")
+Mesothelioma<-Mesothelioma%>%dplyr::rename(Mesothelioma_prev="Percent")
+Hodgkin_lymphoma<-subset(gbd.2,cause=="Hodgkin lymphoma")
+Hodgkin_lymphoma<-Hodgkin_lymphoma%>%dplyr::rename(H_lymphoma_prev="Percent")
+Non_H_lymphoma<-subset(gbd.2,cause=="Non-Hodgkin lymphoma")
+Non_H_lymphoma<-Non_H_lymphoma%>%dplyr::rename(Non_H_lymphoma_prev="Percent")
+MM<-subset(gbd.2,cause=="Multiple myeloma")
+MM<-MM%>%dplyr::rename(MM_prev="Percent")
+Oeso_Ca<-subset(gbd.2,cause=="Esophageal cancer")
+Oeso_Ca<-Oeso_Ca%>%dplyr::rename(Oeso_Ca_prev="Percent")
+Stomach_Ca<-subset(gbd.2,cause=="Stomach cancer")
+Stomach_Ca<-Stomach_Ca%>%dplyr::rename(Stomach_Ca_prev="Percent")
+Liver_Ca<-subset(gbd.2,cause=="Liver cancer")
+Liver_Ca<-Liver_Ca%>%dplyr::rename(Liver_Ca_prev="Percent")
+Mental<-subset(gbd.2,cause=="Mental disorders")
+Mental<-Mental%>%dplyr::rename(Mental_prev="Percent")
+Larynx_Ca<-subset(gbd.2,cause=="Larynx cancer")
+Larynx_Ca<-Larynx_Ca%>%dplyr::rename(Larynx_Ca_prev="Percent")
+
+data.age.sex<-rbind(prev.age.M, prev.age.F)
+data.age.sex$Country[data.age.sex$Country == "US (public)"] <- "US (publicly insured)"
+data.age.sex$Country[data.age.sex$Country == "US (private)"] <- "US (privately insured)"
+data.age.sex$Country[data.age.sex$Country == "Korea"] <- "South Korea"
+data.age.sex$Region<-"."
+data.age.sex$Region[data.age.sex$Country == "Australia"] <- "Oceania"
+data.age.sex$Region[data.age.sex$Country == "New Zealand"] <- "Oceania"
+
+data.age.sex$Region[data.age.sex$Country == "Denmark"] <- "Northern Europe"
+data.age.sex$Region[data.age.sex$Country == "Finland"] <- "Northern Europe"
+data.age.sex$Region[data.age.sex$Country == "Iceland"] <- "Northern Europe"
+data.age.sex$Region[data.age.sex$Country == "Norway"] <- "Northern Europe"
+data.age.sex$Region[data.age.sex$Country == "Sweden"] <- "Northern Europe"
+
+data.age.sex$Region[data.age.sex$Country == "US (publicly insured)"] <- "North America"
+data.age.sex$Region[data.age.sex$Country == "US (privately insured)"] <- "North America"
+data.age.sex$Region[data.age.sex$Country == "Canada"] <- "North America"
+
+data.age.sex$Region[data.age.sex$Country == "France"] <- "Western Europe"
+data.age.sex$Region[data.age.sex$Country == "Germany"] <- "Western Europe"
+data.age.sex$Region[data.age.sex$Country == "United Kingdom"] <- "Western Europe"
+data.age.sex$Region[data.age.sex$Country == "Netherlands"] <- "Western Europe"
+
+data.age.sex$Region[data.age.sex$Country == "Italy"] <- "Southern Europe"
+data.age.sex$Region[data.age.sex$Country == "Spain"] <- "Southern Europe"
+
+data.age.sex$Region[data.age.sex$Country == "Hong Kong"] <- "Asia"
+data.age.sex$Region[data.age.sex$Country == "Japan"] <- "Asia"
+data.age.sex$Region[data.age.sex$Country == "South Korea"] <- "Asia"
+data.age.sex$Region[data.age.sex$Country == "Taiwan"] <- "Asia"
+
+data.age.sex$prev=data.age.sex$`All users`/data.age.sex$Population*100
+
+data.age.sex.2<-subset(data.age.sex, Country!="Hong Kong"&Country!="Netherlands")
+gbd.prev.2<-left_join(data.age.sex.2,select(OUD, c(OUD_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(LBP, c(LBP_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Colon_Ca, c(Colon_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Oral_Ca, c(Oral_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Naso_Ca, c(Naso_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Lung_Ca, c(Lung_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Breast_Ca, c(Breast_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Crv_Ca, c(Crv_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Utr_Ca, c(Utr_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Prs_Ca, c(Prs_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Pharynx_Ca, c(Pharynx_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Gall_Ca, c(Gall_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Panc_Ca, c(Panc_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Melanoma, c(Melanoma_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Skin_Ca, c(Skin_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Ova_Ca, c(Ova_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Testi_Ca, c(Testi_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Kidn_Ca, c(Kidn_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Bladder_Ca, c(Bladder_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Brain_Ca, c(Brain_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Thyroid_Ca, c(Thyroid_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Injuries, c(Injuries_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Mesothelioma, c(Mesothelioma_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Hodgkin_lymphoma, c(H_lymphoma_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Non_H_lymphoma, c(Non_H_lymphoma_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(MM, c(MM_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Oeso_Ca, c(Oeso_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Stomach_Ca, c(Stomach_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Liver_Ca, c(Liver_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Mental, c(Mental_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Larynx_Ca, c(Larynx_Ca_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(leukaemia_prevvv, c(leukaemia_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(cawol_prevvv, c(cawol_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(Leukemia_deaths, c(Leukemia_deaths, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.2<-left_join(gbd.prev.2,select(cawol_deaths, c(cawol_death, Year, Country, Sex)),by = c("Year","Country","Sex") )
+gbd.prev.3<-left_join(gbd.prev.2,select(NP, c(NP_prev, Year, Country, Sex)),by = c("Year","Country","Sex") )
+
+
+
+
+
+
+gbd.prev.3$Country<-factor(gbd.prev.3$Country, levels=c("Australia",
+                           "New Zealand","Hong Kong", "Japan",
+                           "South Korea","Taiwan",
+                           "France","Germany", "Italy",
+                           "Netherlands","Spain",
+                           "United Kingdom","Denmark", "Finland",
+                           "Iceland","Norway",
+                           "Sweden","Canada","US (publicly insured)", 
+                           "US (privately insured)"))
+
+```
+
+
+## Run linear mixed model (multivariable)  
+### Load GDP and Cancer prev   
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(tidyr)
+GDP <- read_excel("D:/R/midas adhd/ref data/update/Income.xlsx")
+GDPPC <- read.csv("D:/R/GOMAP/GOMAP POA/GDP_per_capita.csv",header=TRUE, sep = "\t")
+#GDP per capita
+'%ni%' <- Negate('%in%')
+GDPPCTW <- read_excel("D:/R/GOMAP/GOMAP POA/GDPPC_Taiwan.xls")
+
+
+colnames(GDPPC)[which(names(GDPPC) == "Country.Name")] <- "Country"
+rename <- gbd.prev.3%>%filter(Country %ni% GDPPC$Country) 
+rename<-unique(rename$Country)
+GDPPC[GDPPC$Country == "Korea, Rep.", "Country"] <- "Korea"
+
+gdp_capita.2 <- GDPPC[c(1,46:64)]
+gdp_capita.3 <- pivot_longer(gdp_capita.2, cols=2:20, 
+                        names_to = "Year", values_to = "GDPPC")
+gdp_capita.3$Year<-gsub('X', '', gdp_capita.3$Year)
+
+
+gdp_capita.4<-rbind(gdp_capita.3,GDPPCTW)
+
+gdp_capita.US<-subset(gdp_capita.4,Country=="United States")
+gdp_capita.US$Country<-"US (publicly insured)"
+
+gdp_capita.4$Country[gdp_capita.4$Country=="United States"]<-"US (privately insured)"
+GDPPC5<-rbind(gdp_capita.4,gdp_capita.US)
+GDPPC5$Year<-as.numeric(GDPPC5$Year)
+gbd.prev.4<-left_join(gbd.prev.3,GDPPC5,by = c("Year","Country") )
+
+```
+
+## Model 0: Log prev ~ Year   
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(plyr)
+library(lme4)
+library(nlme)
+
+Multivar_model_1 <- lme(fixed = log(prev)~Year, random = ~1+Year|Country, 
+                        data = gbd.prev.4, na.action=na.omit)
+
+# anti log coefficients
+mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed")
+mixed_est_2 <- data.frame(mixed_est$fixed)
+mixed_results<-cbind(mixed_est_2)
+mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100
+mixed_results$explower<-(exp(mixed_results$lower)-1)*100
+mixed_results$expupper<-(exp(mixed_results$upper)-1)*100
+
+datatable(mixed_results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+# p val
+summary(Multivar_model_1)
+
+```
+## Model 1.1: Log prev ~ Year + Sex +agegroup +region  
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(plyr)
+library(lme4)
+library(nlme)
+library(insight)
+Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+
+                          Region, random = ~1+Year|Country, 
+                        data = gbd.prev.4, na.action=na.omit)
+
+# p val
+summary(Multivar_model_1)
+get_variance(Multivar_model_1)
+
+# anti log coefficients
+mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed")
+mixed_est_2 <- data.frame(mixed_est$fixed)
+mixed_results<-cbind(mixed_est_2)
+mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100
+mixed_results$explower<-(exp(mixed_results$lower)-1)*100
+mixed_results$expupper<-(exp(mixed_results$upper)-1)*100
+
+datatable(mixed_results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+```
+### Model 1.2: no log prev ~ Year + Sex +agegroup +region  
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(plyr)
+library(lme4)
+library(nlme)
+library(insight)
+Multivar_model_1 <- lme(fixed = (prev)~Year+Sex+agegroup+
+                          Region, random = ~1+Year|Country, 
+                        data = gbd.prev.4, na.action=na.omit)
+
+# p val
+summary(Multivar_model_1)
+get_variance(Multivar_model_1)
+
+# anti log coefficients to obtain annual average percentage change
+mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed")
+mixed_est_2 <- data.frame(mixed_est$fixed)
+mixed_results<-cbind(mixed_est_2)
+mixed_results$expcoef<-((mixed_results$est.)-1)*100
+mixed_results$explower<-((mixed_results$lower)-1)*100
+mixed_results$expupper<-((mixed_results$upper)-1)*100
+
+datatable(mixed_results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+```
+### Use Model 1.1M: Log prev ~ Year + Sex +agegroup +region  
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(plyr)
+library(lme4)
+library(nlme)
+library(insight)
+gbd.prev.4_M<-subset(gbd.prev.4,Sex=="Male")
+Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+
+                          Region, random = ~1+Year|Country, 
+                        data = gbd.prev.4_M, na.action=na.omit)
+# p val
+summary(Multivar_model_1)
+get_variance(Multivar_model_1)
+
+# anti log coefficients
+mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed")
+mixed_est_2 <- data.frame(mixed_est$fixed)
+mixed_results<-cbind(mixed_est_2)
+mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100
+mixed_results$explower<-(exp(mixed_results$lower)-1)*100
+mixed_results$expupper<-(exp(mixed_results$upper)-1)*100
+
+datatable(mixed_results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+```
+
+### Use Model 1.1F: Log prev ~ Year + Sex +agegroup +region  
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(plyr)
+library(lme4)
+library(nlme)
+library(insight)
+gbd.prev.4_F<-subset(gbd.prev.4,Sex=="Female")
+Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+
+                          Region, random = ~1+Year|Country, 
+                        data = gbd.prev.4_F, na.action=na.omit)
+# p val
+summary(Multivar_model_1)
+get_variance(Multivar_model_1)
+
+# anti log coefficients
+mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed")
+mixed_est_2 <- data.frame(mixed_est$fixed)
+mixed_results<-cbind(mixed_est_2)
+mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100
+mixed_results$explower<-(exp(mixed_results$lower)-1)*100
+mixed_results$expupper<-(exp(mixed_results$upper)-1)*100
+
+datatable(mixed_results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+```
+
+## Model 2.2M log prev: 
+Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP 
+coef is antiexp
+do one log both side; one only log right side; one both not log
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(plyr)
+library(lme4)
+library(nlme)
+library(insight)
+Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+GDPPC+OUD_prev+
+                          cawol_prev+cawol_death+leukaemia_prev+Leukemia_deaths+
+                          Region, random = ~1+Year|Country, 
+                        data = gbd.prev.4_M, na.action=na.omit)
+# p val
+summary(Multivar_model_1)
+get_variance(Multivar_model_1)
+
+# anti log coefficients
+mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed")
+mixed_est_2 <- data.frame(mixed_est$fixed)
+mixed_results<-cbind(mixed_est_2)
+mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100
+mixed_results$explower<-(exp(mixed_results$lower)-1)*100
+mixed_results$expupper<-(exp(mixed_results$upper)-1)*100
+
+datatable(mixed_results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+
+```
+### Model 2.2F log prev: 
+Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP 
+coef is antiexp
+do one log both side; one only log right side; one both not log
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(plyr)
+library(lme4)
+library(nlme)
+library(insight)
+Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+GDPPC+OUD_prev+
+                          cawol_prev+cawol_death+leukaemia_prev+Leukemia_deaths+
+                          Region, random = ~1+Year|Country, 
+                        data = gbd.prev.4_F, na.action=na.omit)
+# p val
+summary(Multivar_model_1)
+get_variance(Multivar_model_1)
+
+# anti log coefficients
+mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed")
+mixed_est_2 <- data.frame(mixed_est$fixed)
+mixed_results<-cbind(mixed_est_2)
+mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100
+mixed_results$explower<-(exp(mixed_results$lower)-1)*100
+mixed_results$expupper<-(exp(mixed_results$upper)-1)*100
+
+datatable(mixed_results, options = list(
+  autoWidth = TRUE,
+  columnDefs = list(list(width = '200px', targets = c(1, 3)))
+))
+
+```
+<!-- ### Model 2.1 log nothing:  -->
+<!-- prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP    -->
+<!-- therefore coef not antiexp i.e. (coef-1)*100 -->
+<!-- do one log both side; one only log right side; one both not log -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = (prev)~Year+Sex+agegroup+GDPPC+OUD_prev+ -->
+<!--                           cawol_prev+cawol_death+leukaemia_prev+Leukemia_deaths+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.4, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-((mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-((mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-((mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+<!-- ### Model 2.2 log prev:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP  -->
+<!-- coef is antiexp -->
+<!-- do one log both side; one only log right side; one both not log -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+GDPPC+OUD_prev+ -->
+<!--                           cawol_prev+cawol_death+leukaemia_prev+Leukemia_deaths+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.4, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+<!-- ### Model 2.3 log both sides:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP  -->
+<!-- coef is antiexp -->
+<!-- do one log both side; one only log right side; one both not log -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+log(GDPPC)+log(OUD_prev)+ -->
+<!--                           log(cawol_prev)+log(cawol_death)+log(leukaemia_prev)+ -->
+<!--                           log(Leukemia_deaths)+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.4, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+<!-- ### Model 2.3M log both sides:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP  -->
+<!-- coef is antiexp -->
+<!-- do one log both side; one only log right side; one both not log -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+log(GDPPC)+log(OUD_prev)+ -->
+<!--                           log(cawol_prev)+log(cawol_death)+log(leukaemia_prev)+ -->
+<!--                           log(Leukemia_deaths)+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.4_M, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+
+<!-- ### Model 2.3F log both sides:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP  -->
+<!-- coef is antiexp -->
+<!-- do one log both side; one only log right side; one both not log -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+log(GDPPC)+log(OUD_prev)+ -->
+<!--                           log(cawol_prev)+log(cawol_death)+log(leukaemia_prev)+ -->
+<!--                           log(Leukemia_deaths)+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.4_F, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+<!-- ### Model 3.3 log both sides:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP  -->
+<!-- coef is antiexp -->
+<!-- do one log both side; one only log right side; one both not log -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+log(GDPPC)+log(OUD_prev)+log(Injuries_prev)+ -->
+<!--                           log(cawol_prev)+log(cawol_death)+log(leukaemia_prev)+ -->
+<!--                           log(Leukemia_deaths)+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.4, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+
+<!-- ### Model 3.1:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer   -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+OUD_prev+ -->
+<!--                           Total_Ca_prev+ -->
+<!--                           NP_prev+LBP_prev+Mental_prev+Injuries_prev+Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.3, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- # aaaa<-subset(gbd.prev.3,agegroup=="19-30" &Year==2015) -->
+<!-- # ggplot(aaaa, aes(x=prev, y=OUD_prev)) + -->
+<!-- #   geom_point(aes(color=Sex)) -->
+<!-- #  -->
+<!-- # ggplot(aaaa, aes(x=prev, y=Total_Ca_prev)) + -->
+<!-- #   geom_point(aes(color=Sex)) -->
+<!-- #   # theme_bw()+ -->
+<!-- #   # theme(legend.position="top",  -->
+<!-- #   #       legend.justification='left', -->
+<!-- #   #       legend.key = element_blank(), -->
+<!-- #   #       legend.text=element_text(size=10), -->
+<!-- #   #       legend.spacing.y=unit(c(0.2),"cm"), -->
+<!-- #   #       panel.grid.major = element_blank(),  -->
+<!-- #   #       panel.grid.minor = element_blank(), -->
+<!-- #   #       panel.background = element_blank(),  -->
+<!-- #   #       axis.text.x=element_text(angle=90, vjust=0.5), -->
+<!-- #   #       axis.line = element_line(colour = "black"))+  -->
+<!-- #   # labs(y="Rate per 100 population", colour="Country")+ -->
+<!-- #   # scale_x_continuous(breaks=seq(2001,2019,1), expand = c(0, 0), limits = c(2000,2026))+  -->
+<!-- #   # scale_y_continuous()+  -->
+<!-- #   # scale_color_manual(values = col)+ -->
+<!-- #   # facet_wrap(~Country, nrow=1)+ -->
+<!-- #   # guides(colour=guide_legend(nrow=1,byrow=TRUE))+ -->
+<!-- #   # ggtitle("OUD prevalence rate of pain conditions, Both sexes") -->
+<!-- ``` -->
+<!-- ### Model 3.2:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer   -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+log(OUD_prev)+ -->
+<!--                           log(Total_Ca_prev)+ -->
+<!--                           log(NP_prev)+log(LBP_prev)+log(Mental_prev)+ -->
+<!--                           log(Injuries_prev)+Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.3, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- # aaaa<-subset(gbd.prev.3,agegroup=="19-30" &Year==2015) -->
+<!-- # ggplot(aaaa, aes(x=prev, y=OUD_prev)) + -->
+<!-- #   geom_point(aes(color=Sex)) -->
+<!-- #  -->
+<!-- # ggplot(aaaa, aes(x=prev, y=Total_Ca_prev)) + -->
+<!-- #   geom_point(aes(color=Sex)) -->
+<!-- #   # theme_bw()+ -->
+<!-- #   # theme(legend.position="top",  -->
+<!-- #   #       legend.justification='left', -->
+<!-- #   #       legend.key = element_blank(), -->
+<!-- #   #       legend.text=element_text(size=10), -->
+<!-- #   #       legend.spacing.y=unit(c(0.2),"cm"), -->
+<!-- #   #       panel.grid.major = element_blank(),  -->
+<!-- #   #       panel.grid.minor = element_blank(), -->
+<!-- #   #       panel.background = element_blank(),  -->
+<!-- #   #       axis.text.x=element_text(angle=90, vjust=0.5), -->
+<!-- #   #       axis.line = element_line(colour = "black"))+  -->
+<!-- #   # labs(y="Rate per 100 population", colour="Country")+ -->
+<!-- #   # scale_x_continuous(breaks=seq(2001,2019,1), expand = c(0, 0), limits = c(2000,2026))+  -->
+<!-- #   # scale_y_continuous()+  -->
+<!-- #   # scale_color_manual(values = col)+ -->
+<!-- #   # facet_wrap(~Country, nrow=1)+ -->
+<!-- #   # guides(colour=guide_legend(nrow=1,byrow=TRUE))+ -->
+<!-- #   # ggtitle("OUD prevalence rate of pain conditions, Both sexes") -->
+<!-- ``` -->
+<!-- ### Model 3: Log prev ~ Year + Sex +agegroup +region +OUD+different cancer+NP+LBP+Mental+injuries   -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+OUD_prev+ -->
+<!--                           NP_prev+LBP_prev+Mental_prev+Injuries_prev+ -->
+<!--                           Colon_Ca_prev+Oral_Ca_prev+Naso_Ca_prev+ -->
+<!--                           Lung_Ca_prev+Pharynx_Ca_prev+Gall_Ca_prev+ -->
+<!--                           Panc_Ca_prev+Melanoma_prev+Skin_Ca_prev+ -->
+<!--                           Kidn_Ca_prev+Bladder_Ca_prev+Brain_Ca_prev+ -->
+<!--                           Thyroid_Ca_prev+Mesothelioma_prev+ -->
+<!--                           H_lymphoma_prev+Non_H_lymphoma_prev+MM_prev+ -->
+<!--                           Leukemia_prev+Oeso_Ca_prev+Stomach_Ca_prev+ -->
+<!--                           Liver_Ca_prev+Mental_prev+ -->
+<!--                           Region, random = ~Year|Country,  -->
+<!--                         data = gbd.prev.3, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+
+
+<!-- ### Model 4: Log prev ~ Year + Sex +agegroup +region +OUD+different cancer+NP+LBP+injuries (without mental)   -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+OUD_prev+ -->
+<!--                           NP_prev+LBP_prev+Mental_prev+Injuries_prev+ -->
+<!--                           Colon_Ca_prev+Oral_Ca_prev+Naso_Ca_prev+ -->
+<!--                           Lung_Ca_prev+Pharynx_Ca_prev+Gall_Ca_prev+ -->
+<!--                           Panc_Ca_prev+Melanoma_prev+Skin_Ca_prev+ -->
+<!--                           Kidn_Ca_prev+Bladder_Ca_prev+Brain_Ca_prev+ -->
+<!--                           Thyroid_Ca_prev+Mesothelioma_prev+ -->
+<!--                           H_lymphoma_prev+Non_H_lymphoma_prev+MM_prev+ -->
+<!--                           Leukemia_prev+Oeso_Ca_prev+Stomach_Ca_prev+ -->
+<!--                           Liver_Ca_prev+ -->
+<!--                           Region, random = ~Year|Country,  -->
+<!--                         data = gbd.prev.3, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+
+<!-- ``` -->
+
+
+<!-- ### Model 2.2 log prev:  -->
+<!-- Log prev ~ Year + Sex +agegroup +region +OUD+All cancer (except leukaemia)+leukaemia+GDP  -->
+<!-- coef is antiexp -->
+<!-- do one log both side; one only log right side; one both not log -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+Sex+agegroup+GDPPC+OUD_prev+ -->
+<!--                          OUD_prev*Sex+ cawol_prev+cawol_death+leukaemia_prev+Leukemia_deaths+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = gbd.prev.4, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+<!-- ``` -->
+<!-- ### Restrict to males -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- mixed_male<-subset(gbd.prev.4,Sex=="Male") -->
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+GDPPC+OUD_prev+ -->
+<!--                          cawol_prev+cawol_death+leukaemia_prev+Leukemia_deaths+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = mixed_male, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+<!-- ``` -->
+<!-- ### Restrict to female -->
+<!-- ```{r message=FALSE, warning=FALSE} -->
+<!-- library(readxl) -->
+<!-- library(plyr) -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+
+<!-- mixed_female<-subset(gbd.prev.4,Sex=="Female") -->
+<!-- Multivar_model_1 <- lme(fixed = log(prev)~Year+agegroup+GDPPC+OUD_prev+ -->
+<!--                          cawol_prev+cawol_death+leukaemia_prev+Leukemia_deaths+ -->
+<!--                           Region, random = ~1+Year|Country,  -->
+<!--                         data = mixed_female, na.action=na.omit) -->
+<!-- Multivar_model_1 -->
+
+<!-- # anti log coefficients -->
+<!-- mixed_est<-intervals(Multivar_model_1, level = 0.95, which = "fixed") -->
+<!-- mixed_est_2 <- data.frame(mixed_est$fixed) -->
+<!-- mixed_results<-cbind(mixed_est_2) -->
+<!-- mixed_results$expcoef<-(exp(mixed_results$est.)-1)*100 -->
+<!-- mixed_results$explower<-(exp(mixed_results$lower)-1)*100 -->
+<!-- mixed_results$expupper<-(exp(mixed_results$upper)-1)*100 -->
+<!-- mixed_results -->
+
+<!-- datatable(mixed_results, options = list( -->
+<!--   autoWidth = TRUE, -->
+<!--   columnDefs = list(list(width = '200px', targets = c(1, 3))) -->
+<!-- )) -->
+<!-- # p val -->
+<!-- summary(Multivar_model_1) -->
+<!-- ``` -->
+
+
+
+
+
+
