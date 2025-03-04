@@ -3,7 +3,7 @@
 ## Introduction
 This repository contains the SAS codes used in the study titled, "The use of ADHD medication and the risk of suicide attemptself-harm: A multinational population-based self-controlled case series study". The SAS codes included here were used to analyse data locally at each participating site according to a study-specific common data model (CDM) that standardises the data structures of participating databases. The coordinating centre distributed the common analysis package with SAS codes and output templates, the participating site would generate aggregated results locally and only the final aggregated results from each participating site were shared with the study coordinator. R codes included here were used to pool the aggregated results from each sites by meta-analyses, and generate visualisations of the results. These codes are intended to provide transparency and reproducibility of the study results, and can be used as a reference for similar studies in the future. Please refer to the documentation in the repository for further information on the data used, methods employed, and results obtained. This readme file explains the specification of the SAS and R codes. 
 
-<img width="385" alt="Capture2" src="https://github.com/user-attachments/assets/5a222d29-45a2-421a-bb1e-26608b1d51d6" />
+<img width="800" alt="Capture2" src="https://github.com/user-attachments/assets/5a222d29-45a2-421a-bb1e-26608b1d51d6" />
 
 
 ## System requirements
@@ -23,7 +23,7 @@ Three data tables were used in this study, namely:
 1. Demographics table
 2. Drug table
 3. Diagnosis table
-<img width="547" alt="Capture" src="https://github.com/user-attachments/assets/4d4cd999-a399-484c-96d8-6b782433a247" />
+<img width="800" alt="Capture" src="https://github.com/user-attachments/assets/4d4cd999-a399-484c-96d8-6b782433a247" />
 
 ## Instructions for use
 1. Clean the local data according to the three prespecified tables above.
